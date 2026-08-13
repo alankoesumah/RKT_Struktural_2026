@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Progres Kerja Tim Struktural — SD Nasional Plus Tunas Global</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<!-- Firebase App (Modular SDK dari CDN) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // --- KONFIGURASI FIREBASE ANDA (Ganti dengan config dari project Firebase Anda) ---
+  const firebaseConfig = {
+    apiKey: "GANTI_DENGAN_API_KEY_ANDA",
+    authDomain: "GANTI_DENGAN_AUTH_DOMAIN_ANDA",
+    projectId: "GANTI_DENGAN_PROJECT_ID_ANDA",
+    storageBucket: "GANTI_DENGAN_STORAGE_BUCKET_ANDA",
+    messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID_ANDA",
+    appId: "GANTI_DENGAN_APP_ID_ANDA"
+  };
+
+  // Inisialisasi Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Ekspose fungsi database agar bisa diakses script utama
+  window.db = db;
+  window.firebaseModules = { doc, getDoc, setDoc, onSnapshot };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+  :root{
+    --ink:#0F2D2B;
+    --teal-950:#0B2321;
+    --teal-900:#0F3735;
+    --teal-800:#144A46;
+    --teal-700:#1B615B;
+    --teal-100:#DCEAE8;
+    --paper:#F6F4EE;
+    --paper-2:#FBFAF6;
+    --gold:#C8932F;
+    --gold-100:#F4E6C8;
+    --line:#E4DFD1;
+    --gray-500:#8A8477;
+    --status-belum:#9A9384;
+    --status-belum-bg:#EDEBE3;
+    --status-proses:#B9791A;
+    --status-proses-bg:#F7E9D1;
+    --status-selesai:#2F7A4E;
+    --status-selesai-bg:#DFEFE3;
+    --status-late:#B23A2E;
+    --status-late-bg:#F6DFD9;
+    --radius:10px;
+    --shadow: 0 1px 2px rgba(15,45,43,0.06), 0 6px 20px -8px rgba(15,45,43,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    background:linear-gradient(150deg,var(--teal-950) 0%, var(--teal-800) 65%, var(--teal-700) 100%);
+    border-radius:16px;
+    padding:34px 34px 28px;
+    color:#F3F1E7;
+    position:relative;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  header.top::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(circle at 85% 15%, rgba(200,147,47,0.22), transparent 45%),
+                       radial-gradient(circle at 10% 90%, rgba(200,147,47,0.12), transparent 40%);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--gold-100);
+    opacity:.85;
+    margin:0 0 10px;
+  }
+  header.top h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(26px,3.4vw,38px);
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+    line-height:1.15;
+  }
+  header.top p.sub{
+    margin:0;
+    max-width:640px;
+    font-size:14.5px;
+    color:#D9E4E1;
+    line-height:1.55;
+  }
+  .top-stats{
+    position:relative;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:26px;
+  }
+  .top-stat{
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:10px;
+    padding:12px 16px;
+    min-width:118px;
+    backdrop-filter:blur(2px);
+  }
+  .top-stat .n{
+    font-family:'Fraunces',serif;
+    font-size:26px;
+    font-weight:600;
+    line-height:1;
+  }
+  .top-stat .l{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.07em;
+    color:#C9D6D3;
+    margin-top:5px;
+  }
+  .top-stat.done .n{color:#8FE0AE;}
+  .top-stat.progress .n{color:#F0C97A;}
+  .top-stat.late .n{color:#F0A99A;}
+
+  .ring-wrap{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .ring{ width:76px; height:76px; }
+  .ring-label{ text-align:right; }
+  .ring-label .pct{font-family:'Fraunces',serif;font-size:24px;font-weight:600;}
+  .ring-label .txt{font-size:11px;color:#C9D6D3;text-transform:uppercase;letter-spacing:.06em;}
+
+  /* ---------- Bidang overview bars ---------- */
+  section.overview{
+    margin-top:24px;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 24px;
+  }
+  .overview h2, section.list h2{
+    font-family:'Fraunces',serif;
+    font-size:15px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--teal-900);
+    margin:0 0 16px;
+  }
+  .bidang-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:10px;
+  }
+  .bidang-chip{
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:10px;
+    padding:12px 14px;
+    cursor:pointer;
+    text-align:left;
+    transition:border-color .15s, transform .1s;
+    font-family:inherit;
+  }
+  .bidang-chip:hover{border-color:var(--teal-700); transform:translateY(-1px);}
+  .bidang-chip.active{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold-100);}
+  .bidang-chip .row1{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+  .bidang-chip .name{font-weight:700; font-size:13.5px; color:var(--ink);}
+  .bidang-chip .pct{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--teal-800); font-weight:500;}
+  .bidang-chip .bar{height:6px;background:var(--teal-100);border-radius:4px;margin-top:8px;overflow:hidden;}
+  .bidang-chip .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--teal-700),var(--gold));border-radius:4px;}
+  .bidang-chip .count{font-size:11px;color:var(--gray-500); margin-top:6px;}
+
+  /* ---------- Controls ---------- */
+  .controls{
+    margin-top:22px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  .search-box{
+    flex:1 1 280px;
+    position:relative;
+  }
+  .search-box input{
+    width:100%;
+    padding:10px 14px 10px 36px;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:13.5px;
+    font-family:inherit;
+    color:var(--ink);
+  }
+  .search-box input:focus{outline:2px solid var(--teal-700); outline-offset:1px;}
+  .search-box svg{position:absolute; left:11px; top:50%; transform:translateY(-50%); opacity:.45;}
+  .chip-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:8px;
+    padding:8px 13px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--gray-500);
+    font-family:inherit;
+    transition:all .12s;
+  }
+  .chip-btn.active{background:var(--teal-900); color:#fff; border-color:var(--teal-900);}
+  .chip-btn:hover:not(.active){border-color:var(--teal-700); color:var(--teal-900);}
+
+  /* ---------- List ---------- */
+  section.list{margin-top:26px;}
+  .bidang-group{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    margin-bottom:14px;
+    overflow:hidden;
+  }
+  .bidang-head{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 20px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .bidang-head .chev{
+    width:18px;height:18px;flex:none;
+    transition:transform .18s;
+    color:var(--teal-800);
+    transform:rotate(90deg);
+  }
+  .bidang-group.open .bidang-head .chev{transform:rotate(90deg);}
+  .bidang-head .title-block{flex:1;}
+  .bidang-head .title-block .t1{
+    font-family:'Fraunces',serif;font-weight:600;font-size:16.5px;color:var(--teal-950);
+  }
+  .bidang-head .title-block .t2{font-size:12px;color:var(--gray-500); margin-top:2px;}
+  .bidang-head .mini-bar{width:120px;height:6px;background:var(--teal-100);border-radius:4px;overflow:hidden;flex:none;}
+  .bidang-head .mini-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--teal-700),var(--gold));}
+  .bidang-head .pctnum{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--teal-800);width:38px;text-align:right;flex:none;}
+
+  .bidang-body{display:block; padding:0 20px 18px;}
+  .bidang-group:not(.open) .bidang-body{display:none;}
+
+  .program-block{margin-top:14px;}
+  .program-title{
+    font-size:11.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--gold);
+    display:flex;
+    gap:8px;
+    align-items:baseline;
+    margin-bottom:8px;
+    padding-bottom:6px;
+    border-bottom:1px dashed var(--line);
+  }
+  .program-title .code{
+    background:var(--teal-900); color:#fff; font-family:'JetBrains Mono',monospace;
+    font-size:10.5px; border-radius:4px; padding:1px 6px;
+  }
+
+  .item-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:9px;
+  }
+  .item-card.hidden{display:none;}
+  .item-top{display:flex; gap:12px; align-items:flex-start;}
+  .item-no{
+    flex:none;
+    width:26px;height:26px;
+    border-radius:7px;
+    background:var(--teal-100);
+    color:var(--teal-900);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+    margin-top:1px;
+  }
+  .item-main{flex:1; min-width:0;}
+  .item-name{font-size:14px; font-weight:600; color:var(--ink); line-height:1.4;}
+  .item-indikator{margin:7px 0 0; padding:0; list-style:none;}
+  .item-indikator li{
+    font-size:12.5px; color:#54554C; line-height:1.5; padding-left:0px; position:relative; margin-bottom:2px;
+  }
+  .item-meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px;}
+  .tag{
+    font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .tag.target{background:#EFEEE6; color:#6B6656;}
+  .tag.late{background:var(--status-late-bg); color:var(--status-late);}
+  .tag.dana{background:#EAF1EF; color:var(--teal-800);}
+  .tag.pic{background:var(--gold-100); color:#8A5F14;}
+
+  .item-side{flex:none; width:150px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  .status-badge{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px;
+  }
+  .status-badge.st-belum{background:var(--status-belum-bg); color:var(--status-belum);}
+  .status-badge.st-proses{background:var(--status-proses-bg); color:var(--status-proses);}
+  .status-badge.st-selesai{background:var(--status-selesai-bg); color:var(--status-selesai);}
+
+  .item-indikator.checklist{margin:9px 0 0; padding:0; list-style:none;}
+  .ind-row{
+    padding:7px 6px; border-radius:7px; transition:background .1s;
+  }
+  .ind-row:hover{background:#F2F0E7;}
+  .ind-row.done{background:#F3F8F5;}
+  .ind-label{
+    font-size:12.5px; color:#3F4038; line-height:1.5; margin-bottom:5px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .ind-row.done .ind-label{color:#3F6B52;}
+  .ind-label .ind-check{
+    flex:none; width:14px; height:14px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:800; color:#fff;
+    background:var(--status-belum); transition:background .15s;
+  }
+  .ind-row.done .ind-label .ind-check{background:var(--status-selesai);}
+  .ind-bar-wrap{display:flex; align-items:center; gap:8px;}
+  .ind-slider{
+    -webkit-appearance:none; appearance:none; flex:1; height:8px; border-radius:4px;
+    background: linear-gradient(to right, var(--teal-700) var(--pct,0%), var(--teal-100) var(--pct,0%));
+    outline:none; cursor:pointer; margin:0;
+  }
+  .ind-slider::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(15,45,43,0.35);
+    cursor:pointer;
+  }
+  .ind-slider::-moz-range-thumb{
+    width:15px; height:15px; border-radius:50%;
+    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(15,45,43,0.35);
+    cursor:pointer;
+  }
+  .ind-slider::-moz-range-track{height:8px; border-radius:4px; background:var(--teal-100);}
+  .ind-slider::-moz-range-progress{height:8px; border-radius:4px; background:var(--teal-700);}
+  .item-indikator.checklist.no-indikator .ind-slider{
+    background: linear-gradient(to right, var(--gold) var(--pct,0%), var(--gold-100) var(--pct,0%));
+  }
+  .item-indikator.checklist.no-indikator .ind-row.done .ind-label .ind-check{background:var(--gold);}
+  .ind-pct{
+    flex:none; width:38px; text-align:right; font-family:'JetBrains Mono',monospace;
+    font-size:11.5px; font-weight:600; color:var(--teal-900);
+  }
+  .ind-quick{display:flex; gap:4px; margin-top:5px;}
+  .ind-quick button{
+    border:1px solid var(--line); background:#fff; color:#8A8477;
+    font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 6px;
+    border-radius:5px; cursor:pointer; transition:.1s;
+  }
+  .ind-quick button:hover{background:var(--teal-100); color:var(--teal-900); border-color:var(--teal-700);}
+  .ind-quick button.active{background:var(--teal-700); color:#fff; border-color:var(--teal-700);}
+  .tag.noind{background:#EFEEE6; color:#8A8477; font-weight:600;}
+
+  .progress-row{width:100%; display:flex; align-items:center; gap:8px;}
+  .progress-row .mini-bar{height:6px;background:var(--teal-100);border-radius:4px;overflow:hidden;}
+  .progress-row .mini-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--teal-700),var(--gold));}
+  .progress-row .pnum{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--teal-900); width:32px; text-align:right;}
+
+  .note-toggle{
+    font-size:11px; color:var(--teal-700); background:none; border:none; cursor:pointer; padding:0;
+    font-family:inherit; font-weight:600; text-decoration:underline; text-underline-offset:2px;
+  }
+  .note-box{width:100%; margin-top:6px;}
+  .note-box textarea{
+    width:100%; min-height:52px; border:1px solid var(--line); border-radius:7px; padding:7px 9px;
+    font-family:inherit; font-size:12px; resize:vertical; color:var(--ink);
+  }
+  .note-meta{font-size:10px; color:var(--gray-500); margin-top:4px;}
+
+  .empty-state{
+    text-align:center; padding:50px 20px; color:var(--gray-500); font-size:13.5px;
+  }
+
+  footer.foot{
+    text-align:center; margin-top:34px; font-size:11.5px; color:var(--gray-500);
+  }
+
+  @media (max-width:720px){
+    .item-top{flex-wrap:wrap;}
+    .item-side{width:100%; align-items:stretch; flex-direction:row; justify-content:space-between;}
+    .ring-wrap{margin-left:0; width:100%; justify-content:space-between;}
+    .top-stats{justify-content:space-between;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Rencana Kerja Tahunan · 2026/2027</p>
+    <h1>Monitor Progres Kerja Tim Struktural</h1>
+    <p class="sub">SD Nasional Plus Tunas Global — pantau ketercapaian program &amp; kegiatan tiap bidang melalui indikator ketercapaian. Progres kegiatan dihitung otomatis dari indikator yang sudah tercapai; jika sebuah kegiatan tidak memiliki indikator rinci, progres dihitung dari kegiatan itu sendiri.</p>
+    <div class="top-stats" id="topStats">
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 80 80" id="ringSvg">
+          <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+          <circle cx="40" cy="40" r="34" fill="none" stroke="#C8932F" stroke-width="8" stroke-linecap="round" id="ringProgress" transform="rotate(-90 40 40)"/>
+        </svg>
+        <div class="ring-label">
+          <div class="pct" id="ringPct">0%</div>
+          <div class="txt">Selesai</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="overview">
+    <h2>Ringkasan per Bidang</h2>
+    <div class="bidang-grid" id="bidangGrid"></div>
+  </section>
+
+  <div class="controls">
+    <div class="search-box">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Cari program, kegiatan, atau indikator di seluruh data…">
+    </div>
+    <button class="chip-btn active" data-status="all">Semua Status</button>
+    <button class="chip-btn" data-status="belum">Belum Mulai</button>
+    <button class="chip-btn" data-status="proses">Proses</button>
+    <button class="chip-btn" data-status="selesai">Selesai</button>
+    <button class="chip-btn" id="lateToggle">⏱ Terlambat saja</button>
+    <button class="chip-btn" id="expandAllBtn">Buka Semua</button>
+  </div>
+
+  <section class="list">
+    <h2 style="margin-top:22px;">Program &amp; Kegiatan</h2>
+    <div id="listRoot"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">Tidak ada kegiatan yang cocok dengan pencarian atau filter saat ini.</div>
+  </section>
+
+  <footer class="foot">Data bersumber dari RKT_2026-2027.xlsx · Sinkronisasi Real-Time Firestore (Firebase).</footer>
+</div>
+
+<script>
+const RKT_DATA = {"TPK": {"title": "A. Tim Pengembang Kurikulum (TPK)", "programs": [{"code": "A", "title": "Pengembangan Kurikulum", "items": [{"no": 1, "kegiatan": "Menyusun Kurikulum Sekolah", "sasaran": "Guru kelas & Bid.Studi", "indikator": ["Dokumen Kurikulum", "Silabus, Prota, Promes"], "pic": "Bidang A", "dana": "Anggaran Pendapatan Belanja Sekolah (APBS) Rutin", "kegiatan_full": "Menyusun Kurikulum Sekolah", "target_str": "Juli 2026"}, {"no": 2, "kegiatan": "Menyusun Kalender Akademik", "sasaran": "Hari Efektif, Hari Libur; Jadwal Kegiatan; Jadwal Perayaan", "indikator": ["Kaldik Lengkap", "Jumlah Hari Sekolah & Efektif"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Menyusun Kalender Akademik", "target_str": "Juli 2026"}, {"no": 3, "kegiatan": "Menyusun Implementasi Cambridge", "sasaran": "Semua Guru Fase A", "indikator": ["Tersedia Panduan Implementasi"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Menyusun Implementasi Cambridge", "target_str": "Juli 2026"}, {"no": 4, "kegiatan": "Menyusun Implementasi Pramuka", "sasaran": "Semua Guru Fase B dan C", "indikator": ["Tersedia Panduan Implementasi"], "pic": "Bidang B", "dana": null, "kegiatan_full": "Menyusun Implementasi Pramuka", "target_str": "Juli 2026"}, {"no": 5, "kegiatan": "Menyusun Standar Asesmen", "sasaran": "Semua Guru (Trmasuk GPK)", "indikator": ["Standar Format Asesmen", "Standar Model Asesmen", "Standar Jumlah dan Bentuk Soal"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Menyusun Standar Asesmen", "target_str": "Agustus 2026"}]}, {"code": "B", "title": "Pengembangan Program", "items": [{"no": 1, "kegiatan": "Merancang Program Literasi", "sasaran": "Semua Guru", "indikator": ["Tersusun Program Literasi"], "pic": "Bidang A", "dana": "APBS Rutin", "kegiatan_full": "Merancang Program Literasi", "target_str": "Juli 2026"}, {"no": 2, "kegiatan": "Merancang Program Numerasi", "sasaran": "Semua Guru", "indikator": ["Tersusun Program Numerasi"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Merancang Program Numerasi", "target_str": "Juli 2026"}, {"no": 3, "kegiatan": "Merancang Program Penguatan Karakter", "sasaran": "Semua Guru", "indikator": ["Tersusun Program Penguatan Karakter"], "pic": "Bidang B", "dana": null, "kegiatan_full": "Merancang Program Penguatan Karakter", "target_str": "Juli 2026"}, {"no": 4, "kegiatan": "Merancang Program Koding dan AI", "sasaran": "Guru Fase C", "indikator": ["Tersusun Program Koding dan AI"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Merancang Program Koding dan AI", "target_str": "Juli 2026"}, {"no": 5, "kegiatan": "Merancang Program Olimpiade", "sasaran": "Guru Fase B dan C", "indikator": ["Tersusun Program Olimpiade"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Merancang Program Olimpiade", "target_str": "Agustus 2026"}]}, {"code": "C", "title": "Penjaminan Mutu Sekolah", "items": [{"no": 1, "kegiatan": "Menyusun Standar Guru", "sasaran": "Semua Guru", "indikator": ["Standar Pengetahuan & Ketrampilan", "Standar Komunikasi", "Standar Berpakaian"], "pic": "Bidang C", "dana": "APBS Rutin", "kegiatan_full": "Menyusun Standar Guru", "target_str": "Agustus 2026"}, {"no": 2, "kegiatan": "Menyusun Standar Kelas", "sasaran": "Semua Guru Kelas", "indikator": ["Standar Kelengkapan SarPras Kelas", "Standar Display Kelas"], "pic": "Bidang C", "dana": null, "kegiatan_full": "Menyusun Standar Kelas", "target_str": "Agustus 2026"}, {"no": 3, "kegiatan": "Menyusun Standar Pembelajaran", "sasaran": "Semua Guru", "indikator": ["Standar Remedial dan Pengayaan", "Standar RPP/ Modul", "Standar Classroom Management"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Menyusun Standar Pembelajaran", "target_str": "Agustus 2026"}, {"no": 4, "kegiatan": "Menyusun Standar Asesmen", "sasaran": "Semua Guru (Trmasuk GPK)", "indikator": ["Standar Format Asesmen", "Standar Model Asesmen", "Standar Jumlah dan Bentuk Soal"], "pic": "Bidang A", "dana": null, "kegiatan_full": "Menyusun Standar Asesmen", "target_str": "Agustus 2026"}]}, {"code": "D", "title": "Monitoring dan Evaluasi", "items": [{"no": 1, "kegiatan": "Melakukan Observasi Kelas", "sasaran": "Sampel Guru", "indikator": ["Data Tentang Standar Pembelajaran"], "pic": "Bidang A", "dana": "APBS Rutin", "kegiatan_full": "Melakukan Observasi Kelas", "target_str": "September 2026"}, {"no": 2, "kegiatan": "Audit Perangkat Ajar", "sasaran": "Sampel Guru", "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Audit Perangkat Ajar", "target_str": null}, {"no": 3, "kegiatan": "Audit Asesmen", "sasaran": "Sampel Guru", "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Audit Asesmen", "target_str": null}, {"no": 4, "kegiatan": "Audit Budaya Sekolah", "sasaran": "Sampel Layanan", "indikator": ["Data pelaksanaan Tata Tertib Murid", "Data pelaksanaan Penanganan Pelanggaran"], "pic": "Bidang B", "dana": null, "kegiatan_full": "Audit Budaya Sekolah", "target_str": null}]}, {"code": "E", "title": "Mengumpulkan dan Anaslisis Data", "items": [{"no": 1, "kegiatan": "Hasil Belajar", "sasaran": "Semua Murid", "indikator": ["Data laporan dan Rekomendasi"], "pic": "Bidang B&C", "dana": "APBS Rutin", "kegiatan_full": "Hasil Belajar", "target_str": "Desember 2026"}, {"no": 2, "kegiatan": "Survei Orang Tua", "sasaran": "Semua Orang Tua", "indikator": ["Data laporan dan Rekomendasi"], "pic": null, "dana": null, "kegiatan_full": "Survei Orang Tua", "target_str": null}, {"no": 3, "kegiatan": "Kepuasan Guru", "sasaran": "Semua Guru", "indikator": ["Data laporan dan Rekomendasi"], "pic": null, "dana": null, "kegiatan_full": "Kepuasan Guru", "target_str": null}, {"no": 4, "kegiatan": "Absensi", "sasaran": "Semua Murid", "indikator": ["Data laporan dan Rekomendasi"], "pic": null, "dana": null, "kegiatan_full": "Absensi", "target_str": null}, {"no": 5, "kegiatan": "Prestasi", "sasaran": "Semua Murid", "indikator": ["Data laporan dan Rekomendasi"], "pic": null, "dana": null, "kegiatan_full": "Prestasi", "target_str": null}]}, {"code": "F", "title": "Kesiapan Akreditasi Sekolah 2027", "items": [{"no": 1, "kegiatan": "Bedah Instrumen", "sasaran": "Semua Tim TPK", "indikator": ["Tersusun Kebutuhan Sesuai Instrumen"], "pic": "Bidang ABC", "dana": "APBS Rutin", "kegiatan_full": "Bedah Instrumen", "target_str": "Desember 2026"}, {"no": 2, "kegiatan": "Penyusunan Kerangka dan Pola Kerja", "sasaran": "Semua Tim TPK + Tambahan", "indikator": ["Tersusun Cara Kerja dan Personil"], "pic": null, "dana": null, "kegiatan_full": "Penyusunan Kerangka dan Pola Kerja", "target_str": null}, {"no": 3, "kegiatan": "Penyediaan Kebutuhan", "sasaran": "Semua Guru", "indikator": ["Tersedia Semua Kebutuhan"], "pic": null, "dana": null, "kegiatan_full": "Penyediaan Kebutuhan", "target_str": null}]}]}, "Kurikulum": {"title": "B. Bidang Kurikulum", "programs": [{"code": "A", "title": "Pengelolaan Proses Pembelajaran", "items": [{"no": 1, "kegiatan": "Menyusun Kaldik Operasional (Sesuai Kaldik akademik)", "sasaran": null, "indikator": ["Tersusun Hari Efektif Belajar", "Jadwal STS, SAS, SAT/ SAJ"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun Kaldik Operasional (Sesuai Kaldik akademik)", "target_str": "Juli 2026"}, {"no": 2, "kegiatan": "Menyusun Jadwal Pelajaran", "sasaran": null, "indikator": ["Tersusun Jadwal Pelajaran Kelas 1-6"], "pic": null, "dana": null, "kegiatan_full": "Menyusun Jadwal Pelajaran", "target_str": "Juli 2026"}, {"no": 3, "kegiatan": "Menyusun Pembagian Tugas Mengajar", "sasaran": null, "indikator": ["Tersusun Jadwal Guru Mengajar"], "pic": null, "dana": null, "kegiatan_full": "Menyusun Pembagian Tugas Mengajar", "target_str": "Juli 2026"}, {"no": 4, "kegiatan": "Menyusun Guru Pengganti (Piket)", "sasaran": null, "indikator": ["Terjadwal Guru Piket Pengganti"], "pic": null, "dana": null, "kegiatan_full": "Menyusun Guru Pengganti (Piket)", "target_str": "Agustus 2026"}, {"no": 5, "kegiatan": "Menyusun program PM TKA", "sasaran": null, "indikator": ["Tersusun jadwal dan jadwal PM TKA"], "pic": null, "dana": null, "kegiatan_full": "Menyusun program PM TKA", "target_str": "Agustus 2026"}]}, {"code": "B", "title": "Pengelolaan Implementasi Kurikulum", "items": [{"no": 1, "kegiatan": "Memastikan seluruh guru melaksanakan pembelajaran sesuai standar pembelajaran dan asesmen", "sasaran": null, "indikator": ["Tersedianya jadwal konsultasi ke guru dan kunjungan ke kelas"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Memastikan seluruh guru melaksanakan pembelajaran sesuai standar pembelajaran dan asesmen", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Mengidentifikasi kendala implementasi pembelajaran (kurikulum)", "sasaran": null, "indikator": ["Pembuatan Laporan ke Kepala Sekolah dan TPK"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengidentifikasi kendala implementasi pembelajaran (kurikulum)", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 3, "kegiatan": "Pelaksanaan Tranformasi Pembelajaran", "sasaran": null, "indikator": ["Tersusun Jadwal Belajar Per Klaster/ Fase Secara Reguler Minimal 1 Bulan 2x"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Pelaksanaan Tranformasi Pembelajaran — a. Workshop Deep Learning; b. Penyusunan Modul Ajar; c. Lesson Study", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 4, "kegiatan": "Mengimplementasikan STEM di pembelajaran", "sasaran": null, "indikator": ["Tersusun Pembelajaran Intra dan Kokurikuler yang mengimplementasikan STEM"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Mengimplementasikan STEM di pembelajaran", "target_str": "Agustus 2026 - Mei 2027"}]}, {"code": "C", "title": "Pelaksanaan Supervisi Akademik", "items": [{"no": 1, "kegiatan": "Menyusun Program Supervisi", "sasaran": null, "indikator": ["Program dan Jadwal Supervisi"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun Program Supervisi", "target_str": "Agustus - November 2026 (semester 1) dan Februari - April 2027 (semester 2)"}, {"no": 2, "kegiatan": "Melaksanakan Supervisi Guru", "sasaran": null, "indikator": ["Instrumen Supervisi"], "pic": null, "dana": null, "kegiatan_full": "Melaksanakan Supervisi Guru", "target_str": null}, {"no": 3, "kegiatan": "Memberikan Umpan Balik", "sasaran": null, "indikator": ["Laporan Supervisi"], "pic": null, "dana": null, "kegiatan_full": "Memberikan Umpan Balik", "target_str": null}, {"no": 4, "kegiatan": "Menindaklanjuti Hasil Supervisi", "sasaran": null, "indikator": ["Rencana tindak lanjut"], "pic": null, "dana": null, "kegiatan_full": "Menindaklanjuti Hasil Supervisi", "target_str": null}, {"no": 5, "kegiatan": "Mengidentifikasi Kebutuhan Pendampingan", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi Kebutuhan Pendampingan", "target_str": null}, {"no": 6, "kegiatan": "Penguatan Budaya Refleksi Guru", "sasaran": null, "indikator": ["Tersusun Jadwal Belajar Per Klaster/ Fase Secara Reguler Minimal 1 Bulan 1x"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Penguatan Budaya Refleksi Guru — a. Pelaksanaan PLC; b. Refleksi Mengajar; c. Peer Observation", "target_str": "Agustus 2026 - Mei 2027"}]}, {"code": "D", "title": "Pengelolaan Asesmen", "items": [{"no": 1, "kegiatan": "Menyusun jadwal asesmen", "sasaran": null, "indikator": ["Tersusun jadwal asesmen"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Menyusun jadwal asesmen", "target_str": "Juli 2026"}, {"no": 2, "kegiatan": "Mengawal proses penyusunan soal", "sasaran": null, "indikator": ["Pendampingan guru"], "pic": null, "dana": null, "kegiatan_full": "Mengawal proses penyusunan soal", "target_str": "Agustus 26-Mei 27"}, {"no": 3, "kegiatan": "Mengawal proses pengolahan nilai", "sasaran": null, "indikator": ["Pemantauan sistem olah nilai"], "pic": null, "dana": null, "kegiatan_full": "Mengawal proses pengolahan nilai", "target_str": "Agustus 26-Mei 27"}, {"no": 4, "kegiatan": "Mengoordinasikan pembagian rapor", "sasaran": null, "indikator": ["Tersusun teknis pengambilan rapor"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pembagian rapor", "target_str": "Agustus 26-Mei 27"}, {"no": 5, "kegiatan": "Menyusun teknis SLC Kelas 5 dan 6", "sasaran": null, "indikator": ["Tersusun teknis SLC"], "pic": null, "dana": null, "kegiatan_full": "Menyusun teknis SLC Kelas 5 dan 6", "target_str": "Agustus 26-Mei 27"}, {"no": 6, "kegiatan": "Mengatur kepanitiaan As Sumatif", "sasaran": null, "indikator": ["Tersusunnya kepanitiaan STS,SAS,SAT"], "pic": null, "dana": null, "kegiatan_full": "Mengatur kepanitiaan As Sumatif", "target_str": "Juli 2026"}, {"no": 7, "kegiatan": "Melaksanakan uji coba aplikasi asesmen", "sasaran": null, "indikator": ["Pendampingan guru"], "pic": null, "dana": null, "kegiatan_full": "Melaksanakan uji coba aplikasi asesmen", "target_str": "Juli-Agustus 2026"}, {"no": 8, "kegiatan": "Pelaksanaan program remedial/pengayaan", "sasaran": null, "indikator": ["Pendampingan guru"], "pic": null, "dana": null, "kegiatan_full": "Pelaksanaan program remedial/pengayaan", "target_str": "Agustus 26-Mei 27"}, {"no": 9, "kegiatan": "Melaksanakan analisis hasil asesmen", "sasaran": null, "indikator": ["Tersusun data peta akademik murid"], "pic": null, "dana": null, "kegiatan_full": "Melaksanakan analisis hasil asesmen", "target_str": "Agustus 26-Mei 27"}]}, {"code": "E", "title": "Pengelolaan Administrasi Akademik", "items": [{"no": 1, "kegiatan": "Mengoordinasikan perangkat ajar", "sasaran": null, "indikator": ["Penyusunan Silabus, Prota, Prosem oleh semua guru", "Penyusunan CP, TP dan ATP oleh semua guru", "Penyusunan Kisi-Kisi dan Bank Soal oleh semua guru", "Penyusunan Remedial dan Pengayaan oleh semua guru"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengoordinasikan perangkat ajar", "target_str": "Juli 2026 / Agustus 26-Mei 27"}, {"no": 2, "kegiatan": "Mengelola Arsip Akademik", "sasaran": null, "indikator": ["Arsip RPP/ Modul Ajar oleh semua guru", "Arsip Penilaian oleh semua guru", "Arsip Rapor oleh semua guru"], "pic": null, "dana": null, "kegiatan_full": "Mengelola Arsip Akademik", "target_str": "Juli 26-Juni 2027"}]}]}, "Kesiswaan": {"title": "C. Bidang Kesiswaan", "programs": [{"code": "A", "title": "Pembinaan Karakter & Budaya Sekolah", "items": [{"no": 1, "kegiatan": "Menyusun Jadwal Pembinaan", "sasaran": null, "indikator": ["Tersusun jadwal Edukasi Anti Bullying, PSA dan kegiatan pramuka", "Tidak ada kejadian bullying dan serta pelecehan seksual"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Menyusun Jadwal Pembinaan — a. Edukasi Anti Bullying; b. Edukasi Pend.Seksual Anak; c. Kegiatan Pramuka", "target_str": "Agutus 2026"}, {"no": 2, "kegiatan": "Mengawal Implementasi 7 KAIH", "sasaran": null, "indikator": ["Tersusun jadwal senam bersama", "Tersusun jadwal ibadah bersama", "Terselenggaranya kegiatan GR", "Terlaksananya kebiasaan TCBAS", "Terlaksananya 5 kultur", "Terusun Program UKS"], "pic": null, "dana": null, "kegiatan_full": "Mengawal Implementasi 7 KAIH — a. Pelaksanan Senam Bersama; b. Pelaksanaan kegiatan ibadah; c. Gelanggang Raga (GR); d. Penerapan Program TCBAS; e. Penerapan 5 Kultur Sekolah; f. Program UKS", "target_str": "Agustus 2026 - Juni 2027"}]}, {"code": "B", "title": "Pembinaan Disiplin dan Tata Tertib", "items": [{"no": 1, "kegiatan": "Menyusun dan mengevaluasi tata tertib murid", "sasaran": null, "indikator": ["Tersusun Tata Tertib, SOP dan penanganan pelanggaran"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun dan mengevaluasi tata tertib murid", "target_str": "Agustus 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Mengelola penghargaan & pembinaan", "sasaran": null, "indikator": ["Tersusun skema apresiasi"], "pic": null, "dana": null, "kegiatan_full": "Mengelola penghargaan & pembinaan", "target_str": null}, {"no": 3, "kegiatan": "Menangani pelanggaran disiplin", "sasaran": null, "indikator": ["Tertangani pelanggaran sesuai SOP"], "pic": null, "dana": null, "kegiatan_full": "Menangani pelanggaran disiplin", "target_str": null}, {"no": 4, "kegiatan": "Melakukan kordinasi dengan guru kelas, orang tua dan psikolog sekolah", "sasaran": null, "indikator": ["Terlesesaikan dan terdokumentasi dengan baik setiap kejadian"], "pic": null, "dana": null, "kegiatan_full": "Melakukan kordinasi dengan guru kelas, orang tua dan psikolog sekolah", "target_str": null}, {"no": 5, "kegiatan": "Menganalisis data pelanggaran", "sasaran": null, "indikator": ["Terusun laporan dan rekomendasi"], "pic": null, "dana": null, "kegiatan_full": "Menganalisis data pelanggaran", "target_str": null}]}, {"code": "C", "title": "Pengembangan Minat, Bakat & Prestasi", "items": [{"no": 1, "kegiatan": "Pemetaan Minat, Bakat dan Potensi", "sasaran": null, "indikator": ["Tersusun database potensi murid"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Pemetaan Minat, Bakat dan Potensi", "target_str": "Agustus 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Mengkordinasikan kegiatan Ekskul", "sasaran": null, "indikator": ["Terkordinasi dengan baik"], "pic": null, "dana": null, "kegiatan_full": "Mengkordinasikan kegiatan Ekskul", "target_str": null}, {"no": 3, "kegiatan": "Menyiapkan murid mengikuti lomba", "sasaran": null, "indikator": ["Terencana dengan baik"], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan murid mengikuti lomba", "target_str": null}, {"no": 4, "kegiatan": "Menyusun jadwal pembinaan murid", "sasaran": null, "indikator": ["Tersusun kalender/jadwal lomba"], "pic": null, "dana": null, "kegiatan_full": "Menyusun jadwal pembinaan murid", "target_str": null}, {"no": 5, "kegiatan": "Mendokumentasikan capaian prestasi", "sasaran": null, "indikator": ["Tersusun rekap prestasi"], "pic": null, "dana": null, "kegiatan_full": "Mendokumentasikan capaian prestasi", "target_str": null}]}, {"code": "D", "title": "Pengelolaan Kegiatan Kesiswaan", "items": [{"no": 1, "kegiatan": "Melaksanakan Kegiatan Rutin Tahunan", "sasaran": null, "indikator": ["Dokumentasi MPLS", "Meningkatnya kompetensi murid", "Tercapainya 8 DPL"], "pic": null, "dana": null, "kegiatan_full": "Melaksanakan Kegiatan Rutin Tahunan — a. MPLS; b. Agustusan; c. Class Meeting; d. Field Trip; e. Kemah", "target_str": "Juli 2026 / Desember 2026 / Oktober 26 & Mar 27"}, {"no": 2, "kegiatan": "Melaksanakan & Kordinasi Keg. PHBN/ A", "sasaran": null, "indikator": ["Terdokumentasi dengan baik", "Meningkatnya kompetensi murid", "Tercapainya 8 DPL"], "pic": null, "dana": null, "kegiatan_full": "Melaksanakan & Kordinasi Keg. PHBN/ A — a. Kartini; b. Kegiatan Keagamaan (Kord.Keagamaan); c. Student Led Conf. (Kord.Kurikulum)", "target_str": "April 2027 / Maret 2027 / Term 1,2,3,4"}]}]}, "SarPras": {"title": "D. Bidang Sarana & Prasarana", "programs": [{"code": "A", "title": "Pengelolaan Sarpras Pembelajaran", "items": [{"no": 1, "kegiatan": "Mengelola ruang kelas, lab.komputer, ruang guru, perpustakaan, uks, aula, toilet, tempat ibadah, area terbuka.", "sasaran": null, "indikator": ["Tersedia peta ruang per lantai", "Terdapat nama ruang & area", "Tersedia informasi peruntukan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengelola ruang kelas, lab.komputer, ruang guru, perpustakaan, uks, aula, toilet, tempat ibadah, area terbuka.", "target_str": "Juli 2026 / Juli-Agustus 2026"}, {"no": 2, "kegiatan": "Memastikan keamanan, kelayakan dan kenyamanan seluruh ruang & area", "sasaran": null, "indikator": ["Terdapat petunjuk penggunaan", "Terdapat informasi kondisi ruang"], "pic": null, "dana": null, "kegiatan_full": "Memastikan keamanan, kelayakan dan kenyamanan seluruh ruang & area", "target_str": "Juli 26-Juni 2027"}, {"no": 3, "kegiatan": "Menyusun rencana kebutuhan", "sasaran": null, "indikator": ["Daftar pengajuan kebutuhan"], "pic": null, "dana": null, "kegiatan_full": "Menyusun rencana kebutuhan", "target_str": "Juli 26-Juni 2027"}]}, {"code": "B", "title": "Pengelolaan Inventaris dan Aset Sekolah", "items": [{"no": 1, "kegiatan": "Menyusun database inventaris sekolah", "sasaran": null, "indikator": ["Terdapat database inventaris"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun database inventaris sekolah", "target_str": "Juli-Agustus 2026"}, {"no": 2, "kegiatan": "Pencatatan barang masuk& keluar", "sasaran": null, "indikator": ["Terdapat sistem pencatatan barang keluar masuk"], "pic": null, "dana": null, "kegiatan_full": "Pencatatan barang masuk& keluar", "target_str": "Juli 26-Juni 2027"}, {"no": 3, "kegiatan": "Melakukan inventarisir aset secara berkala", "sasaran": null, "indikator": ["Terdapat sistem pencatatan inventaris"], "pic": null, "dana": null, "kegiatan_full": "Melakukan inventarisir aset secara berkala", "target_str": "Juli 26-Juni 2027"}, {"no": 4, "kegiatan": "Mengendalikan peminjaman&pengembalikan", "sasaran": null, "indikator": ["Terdapat sistem pencatatan peminjaman"], "pic": null, "dana": null, "kegiatan_full": "Mengendalikan peminjaman&pengembalikan", "target_str": "Juli 26-Juni 2027"}, {"no": 5, "kegiatan": "Memberikan kode inventarisasi", "sasaran": null, "indikator": ["Kodifikasi untuk semua aset"], "pic": null, "dana": null, "kegiatan_full": "Memberikan kode inventarisasi", "target_str": "Juli 26-Juni 2027"}]}, {"code": "C", "title": "Pemeliharaan Fasilitas Sekolah", "items": [{"no": 1, "kegiatan": "Menyusun jadwal pemeliharaan rutin", "sasaran": null, "indikator": ["Jadwal maintanance"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun jadwal pemeliharaan rutin", "target_str": "Juli 26-Juni 2027"}, {"no": 2, "kegiatan": "Melakukan inspeksi berkala ke semua fasilitas", "sasaran": null, "indikator": ["Pengajuan perbaikan"], "pic": null, "dana": null, "kegiatan_full": "Melakukan inspeksi berkala ke semua fasilitas", "target_str": null}, {"no": 3, "kegiatan": "Mengordinasikan perbaikan kerusakan", "sasaran": null, "indikator": ["Laporan perbaikan"], "pic": null, "dana": null, "kegiatan_full": "Mengordinasikan perbaikan kerusakan", "target_str": null}, {"no": 4, "kegiatan": "Mengidentifikasi potensi kerusakan", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi potensi kerusakan", "target_str": null}]}, {"code": "D", "title": "Pengadaan Barang & Pengembangan Fasilitas", "items": [{"no": 1, "kegiatan": "Pembelian Smart TV kelas 1", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pembelian Smart TV kelas 1", "target_str": "Agustus 2026"}, {"no": 2, "kegiatan": "Pengadaan CCTV untuk semua ruang kelas", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pengadaan CCTV untuk semua ruang kelas", "target_str": "Agustus 2026"}, {"no": 3, "kegiatan": "Pengadaan tiang gelantungan", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pengadaan tiang gelantungan", "target_str": "Agustus 2026"}, {"no": 4, "kegiatan": "Pengadaan kursi dan meja belajar kelas", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "BOS Reg", "kegiatan_full": "Pengadaan kursi dan meja belajar kelas", "target_str": "Juli 2026"}, {"no": 5, "kegiatan": "Pengadaan rak buku kelas 1-6", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "BOS Reg", "kegiatan_full": "Pengadaan rak buku kelas 1-6", "target_str": "Juli 2026"}, {"no": 6, "kegiatan": "Pengadaan Mat kelas 456", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pengadaan Mat kelas 456", "target_str": "Agustus 2026"}, {"no": 7, "kegiatan": "Pengadaan Rak Piala Murid", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pengadaan Rak Piala Murid", "target_str": "Agustus 2026"}, {"no": 8, "kegiatan": "Pengadaan tiang angklung", "sasaran": null, "indikator": ["Tersedia sesuai batas waktu rencana pembelian dan pengadaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Pengadaan tiang angklung", "target_str": "Agustus 2026"}]}, {"code": "E", "title": "Pengelolaan Lingkungan Belajar Yang Aman, Nyaman dan Sehat", "items": [{"no": 1, "kegiatan": "Memastikan pencahayaan, ventilasi dan sirkulasi yang memadai", "sasaran": null, "indikator": ["Checklist lingkungan belajar"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Memastikan pencahayaan, ventilasi dan sirkulasi yang memadai", "target_str": "Juli 26-Juni 2027"}, {"no": 2, "kegiatan": "Mengawasi ketersedian air bersih", "sasaran": null, "indikator": ["Laporan inspeksi"], "pic": null, "dana": null, "kegiatan_full": "Mengawasi ketersedian air bersih", "target_str": null}, {"no": 3, "kegiatan": "Memastikan toilet bersih dan berfungsi", "sasaran": null, "indikator": ["Prorgram peningkatan ling.sekolah (kerja bakti, pengaturan OB, Dll"], "pic": null, "dana": null, "kegiatan_full": "Memastikan toilet bersih dan berfungsi", "target_str": null}, {"no": 4, "kegiatan": "Mengelola area beraktifitas yang aman", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengelola area beraktifitas yang aman", "target_str": null}]}]}, "Bendahara": {"title": "Bendahara Sekolah", "programs": [{"code": "A", "title": "Perencanaan Anggaran", "items": [{"no": 1, "kegiatan": "Menyusun Rencana Anggaran Sekolah", "sasaran": null, "indikator": ["Tersusun RKAS/ APBS"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun Rencana Anggaran Sekolah", "target_str": "Juni - Juli 2026"}, {"no": 2, "kegiatan": "Mengordinasikan penyusunan anggaran TPK dan semua bidang", "sasaran": null, "indikator": ["Tersusun Rencana Anggaran TPK dan Seluruh Bidang"], "pic": null, "dana": null, "kegiatan_full": "Mengordinasikan penyusunan anggaran TPK dan semua bidang", "target_str": null}, {"no": 3, "kegiatan": "Melakukan analisis kebutuhan anggaran setahun", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Melakukan analisis kebutuhan anggaran setahun", "target_str": null}, {"no": 4, "kegiatan": "Memberikan rekomendasi efisiensi penggunaan anggaran", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Memberikan rekomendasi efisiensi penggunaan anggaran", "target_str": null}]}, {"code": "B", "title": "Pengelolaan Pengeluaran", "items": [{"no": 1, "kegiatan": "Memproses pembayaran sesuai prosedur", "sasaran": null, "indikator": ["Memiliki dokumen transaksi yang lengkap"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Memproses pembayaran sesuai prosedur", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Mengendalikan penggunaan anggaran sesuai POS", "sasaran": null, "indikator": ["Melakukan transaksi sesuai RKAS/ APBS"], "pic": null, "dana": null, "kegiatan_full": "Mengendalikan penggunaan anggaran sesuai POS", "target_str": null}, {"no": 3, "kegiatan": "Berkordinasi dengan Wakasek Sarpras dalam pembayaran", "sasaran": null, "indikator": ["Kordinasi lancar dan pengadaan selesai"], "pic": null, "dana": null, "kegiatan_full": "Berkordinasi dengan Wakasek Sarpras dalam pembayaran", "target_str": null}]}, {"code": "C", "title": "Pembukuan dan Pelaporan", "items": [{"no": 1, "kegiatan": "Menyusun pembukuan keuangan sekolah", "sasaran": null, "indikator": ["Memiliki dokumen keuangan lengkap"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun pembukuan keuangan sekolah", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Menyiapkan laporan keuangan mingguan, bulan, semester, dan tahunan", "sasaran": null, "indikator": ["Tersusun laporang yang transparan dan akuntabel"], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan laporan keuangan mingguan, bulan, semester, dan tahunan", "target_str": null}]}, {"code": "D", "title": "Pengendalian dan Kepatuhan", "items": [{"no": 1, "kegiatan": "Menyimpan seluruh bukti transaksi", "sasaran": null, "indikator": ["Memiliki dokumen arsip lengkap dan rapi"], "pic": null, "dana": null, "kegiatan_full": "Menyimpan seluruh bukti transaksi", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Menyiapkan dokumen Audit", "sasaran": null, "indikator": ["Tersedia dokumen yang dibutuhkan saat audit"], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan dokumen Audit", "target_str": null}]}]}, "LMS": {"title": "LMS dan Dokumentasi", "programs": [{"code": "A", "title": "Pengelolaan Learning Management System (LMS)", "items": [{"no": 1, "kegiatan": "Mengelola LMS - Quintal", "sasaran": null, "indikator": ["Terlaksana Performa LMS Quintal yang baik"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Mengelola LMS - Quintal", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Membuat pola/ struktur dan panduan penggunaan LMS Quintal", "sasaran": null, "indikator": ["Terdapat Panduan penggunaan Quintal"], "pic": null, "dana": null, "kegiatan_full": "Membuat pola/ struktur dan panduan penggunaan LMS Quintal", "target_str": null}, {"no": 3, "kegiatan": "Mengelola Akun Kepsek - Guru - Murid dan Orang Tua Murid", "sasaran": null, "indikator": ["Pelatihan kepada guru baru"], "pic": null, "dana": null, "kegiatan_full": "Mengelola Akun Kepsek - Guru - Murid dan Orang Tua Murid", "target_str": null}, {"no": 4, "kegiatan": "Memastikan LMS - Quintal dan Platform digital pendukung optimal", "sasaran": null, "indikator": ["Pendampingan ke semua guru"], "pic": null, "dana": null, "kegiatan_full": "Memastikan LMS - Quintal dan Platform digital pendukung optimal", "target_str": null}, {"no": 5, "kegiatan": "Membberikan pelatihan penggunaan dan pendampingan kepada guru", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Membberikan pelatihan penggunaan dan pendampingan kepada guru", "target_str": null}]}, {"code": "B", "title": "Pengembangan Pembelajaran Digital", "items": [{"no": 1, "kegiatan": "Mengelola Video Pembelajaran", "sasaran": null, "indikator": ["Tersusun sistem penyimpanan& bank video"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Mengelola Video Pembelajaran", "target_str": "Juli - Des 2026"}, {"no": 2, "kegiatan": "Mengelola Sumber Belajar Digital Pendukung yaitu Klasmart", "sasaran": null, "indikator": ["Melakukan uji coba Klasmart di Fase C"], "pic": null, "dana": null, "kegiatan_full": "Mengelola Sumber Belajar Digital Pendukung yaitu Klasmart", "target_str": "Agustus - Sep 2026"}, {"no": 3, "kegiatan": "Mendorong dan mendukung guru dalam pemanfaatan pembelajaran digital", "sasaran": null, "indikator": ["Memberikan pelatihan pemanfaatan teknologi dalam pembelajaran"], "pic": null, "dana": null, "kegiatan_full": "Mendorong dan mendukung guru dalam pemanfaatan pembelajaran digital", "target_str": "Agustus - Des 2026"}]}, {"code": "C", "title": "Dokumentasi Sekolah", "items": [{"no": 1, "kegiatan": "Mendokumentasikan seluruh kegiatan sekolah", "sasaran": null, "indikator": ["Tersusun Sistem Arsip Foto, Video dan Dokumen"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mendokumentasikan seluruh kegiatan sekolah", "target_str": null}, {"no": 2, "kegiatan": "Mengelola Foto dan Video Sekolah", "sasaran": null, "indikator": ["Penyimpanan berdasarkan kebutuhan"], "pic": null, "dana": null, "kegiatan_full": "Mengelola Foto dan Video Sekolah", "target_str": "Agustus 2026"}, {"no": 3, "kegiatan": "Mengarsipkan dokumen secara sistimatis berbasis Cloud", "sasaran": null, "indikator": ["(Kegiatan murid, kegiatan guru, PKKS, Akreditasi, dll)"], "pic": null, "dana": null, "kegiatan_full": "Mengarsipkan dokumen secara sistimatis berbasis Cloud", "target_str": "Agustus 2026"}, {"no": 4, "kegiatan": "Menyiapkan dokumentasi untuk kebutuhan laporan, penilaian promosi", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan dokumentasi untuk kebutuhan laporan, penilaian promosi", "target_str": "Ags 26 - Juni 2027"}]}, {"code": "D", "title": "Publikasi dan Branding Sekolah (Fungsi Kordinasi)", "items": [{"no": 1, "kegiatan": "Mengelola media sosial sekolah", "sasaran": null, "indikator": ["Terbentuk tim Medsos dan Tim Konten Promosi"], "pic": null, "dana": "APBS Rutin dan APBY", "kegiatan_full": "Mengelola media sosial sekolah", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Mengelola website sekolah", "sasaran": null, "indikator": ["Sosmed Sekolah dan Website Aktif Efektif"], "pic": null, "dana": null, "kegiatan_full": "Mengelola website sekolah", "target_str": null}, {"no": 3, "kegiatan": "Mengelola konten promosi sekolah (Kord.Marketing Sekolah)", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengelola konten promosi sekolah (Kord.Marketing Sekolah)", "target_str": null}]}, {"code": "E", "title": "Pengelolaan Arsip", "items": []}]}, "Operator": {"title": "Operator", "programs": [{"code": "A", "title": "Pengelolaan Data Dapodik Sekolah", "items": [{"no": 1, "kegiatan": "Mengelola Data Murid", "sasaran": null, "indikator": ["Data murid yang valid"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengelola Data Murid", "target_str": "Agustus 2026"}, {"no": 2, "kegiatan": "Mengelola Data Guru", "sasaran": null, "indikator": ["Data guru dan tenaga kependidikan yang valid"], "pic": null, "dana": null, "kegiatan_full": "Mengelola Data Guru", "target_str": null}, {"no": 3, "kegiatan": "Mengelola Data Tenaga Kependidikan", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengelola Data Tenaga Kependidikan", "target_str": null}, {"no": 4, "kegiatan": "Memastikan Validasi Data", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Memastikan Validasi Data", "target_str": null}]}, {"code": "B", "title": "Penyelenggaraan Kegiatan Asesmen Berbasis Online", "items": [{"no": 1, "kegiatan": "Mengelola pelaksanaan Sulinjar", "sasaran": null, "indikator": ["Terlaksana kegiatan sulinjar"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengelola pelaksanaan Sulinjar", "target_str": "Agustus 2026"}, {"no": 2, "kegiatan": "Mengelola pelaksanaan TKA", "sasaran": null, "indikator": ["Terlaksana TKA"], "pic": null, "dana": null, "kegiatan_full": "Mengelola pelaksanaan TKA", "target_str": "April 2027"}, {"no": 3, "kegiatan": "Mengelola pelaksanaan Olimpade berbasis online", "sasaran": null, "indikator": ["Terlaksana OSN online"], "pic": null, "dana": null, "kegiatan_full": "Mengelola pelaksanaan Olimpade berbasis online", "target_str": "Jadwal panitia"}]}, {"code": "C", "title": "Pengelolaan Mutasi Masuk dan Keluar Secara Sistem Dapodik", "items": [{"no": 1, "kegiatan": "Mengelola Mutasi Murid", "sasaran": null, "indikator": [], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengelola Mutasi Murid", "target_str": "Juli 2026 - Juli 2027"}, {"no": 2, "kegiatan": "Mengelola Mutasi Guru", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengelola Mutasi Guru", "target_str": null}]}, {"code": "D", "title": "Pelaporan", "items": [{"no": 1, "kegiatan": "Menyusun laporan data sekolah (A1)", "sasaran": null, "indikator": ["Menyusun data sekolah"], "pic": null, "dana": null, "kegiatan_full": "Menyusun laporan data sekolah (A1)", "target_str": "Juli 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Menyediakan data untuk kepala sekolah", "sasaran": null, "indikator": ["Menyusun data PKKS"], "pic": null, "dana": null, "kegiatan_full": "Menyediakan data untuk kepala sekolah", "target_str": null}, {"no": 3, "kegiatan": "Menyiapkan data untuk PKKS", "sasaran": null, "indikator": ["Menyusun data Akreditasi"], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan data untuk PKKS", "target_str": null}, {"no": 4, "kegiatan": "Menyiapkan data untuk akreditasi", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Menyiapkan data untuk akreditasi", "target_str": null}]}]}, "Cambridge": {"title": "Cambridge", "programs": [{"code": "A", "title": "Memastikan seluruh program Cambridge terlaksana secara konsisten di seluruh jenjang sesuai tahap pengembangan sekolah.", "items": [{"no": 1, "kegiatan": "Menyusun rencana implementasi Cambridge Programme setiap tahun ajaran.", "sasaran": null, "indikator": ["Tersusun program kerja implementasi Cambridge"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun rencana implementasi Cambridge Programme setiap tahun ajaran.", "target_str": "Agustus 2026"}, {"no": 2, "kegiatan": "Mengoordinasikan pelaksanaan Cambridge Programme pada seluruh fase.", "sasaran": null, "indikator": ["Tersusun program kerja Cambridge di Fase A"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pelaksanaan Cambridge Programme pada seluruh fase.", "target_str": null}, {"no": 3, "kegiatan": "Memastikan seluruh guru memahami arah implementasi Cambridge.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Memastikan seluruh guru memahami arah implementasi Cambridge.", "target_str": null}, {"no": 4, "kegiatan": "Melaporkan perkembangan implementasi kepada Kepala Sekolah dan TPK.", "sasaran": null, "indikator": ["Laporan implementasi TPK dan KS"], "pic": null, "dana": null, "kegiatan_full": "Melaporkan perkembangan implementasi kepada Kepala Sekolah dan TPK.", "target_str": "Per Term"}]}, {"code": "B", "title": "Pengembangan Pembelajaran Berbasis Cambridge", "items": [{"no": 1, "kegiatan": "Mengoordinasikan penggunaan bahan ajar English pada seluruh kelas.", "sasaran": null, "indikator": ["Panduan penggunaan bahan ajar math dan science pada guru Cambridge"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Mengoordinasikan penggunaan bahan ajar English pada seluruh kelas.", "target_str": null}, {"no": 2, "kegiatan": "Mengoordinasikan penggunaan bahan ajar Math & Science pada kelas 1-2", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan penggunaan bahan ajar Math & Science pada kelas 1-2", "target_str": null}, {"no": 3, "kegiatan": "Mendampingi guru dalam memahami struktur dan karakteristik bahan ajar Cambridge.", "sasaran": null, "indikator": ["Pelatihan/ pengarahan pada seluruh guru tentang program cambridge dan bentuk dukungan guru"], "pic": null, "dana": null, "kegiatan_full": "Mendampingi guru dalam memahami struktur dan karakteristik bahan ajar Cambridge.", "target_str": null}]}, {"code": "C", "title": "Pengawalan Pilot Project Cambridge Science & Mathematics (Fase A)", "items": [{"no": 1, "kegiatan": "Mengoordinasikan pelaksanaan Cambridge Science dan Cambridge Mathematics di Kelas 1–2", "sasaran": null, "indikator": ["Laporan Pilot Project Fase A Semester 1"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengoordinasikan pelaksanaan Cambridge Science dan Cambridge Mathematics di Kelas 1–2", "target_str": "Per Semester, Des 2026 dan Mei 2027"}, {"no": 2, "kegiatan": "Mengidentifikasi tantangan implementasi.", "sasaran": null, "indikator": ["Laporan Pilot Project Fase A Semester 2"], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi tantangan implementasi.", "target_str": null}, {"no": 3, "kegiatan": "Mengumpulkan data hasil belajar dan umpan balik guru.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengumpulkan data hasil belajar dan umpan balik guru.", "target_str": null}, {"no": 4, "kegiatan": "Melakukan refleksi berkala bersama guru Fase A.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Melakukan refleksi berkala bersama guru Fase A.", "target_str": null}, {"no": 5, "kegiatan": "Mengidentifikasi kendala implementasi pembelajaran.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi kendala implementasi pembelajaran.", "target_str": null}, {"no": 6, "kegiatan": "Menyusun rekomendasi perbaikan kepada TPK dan kepala sekolah", "sasaran": null, "indikator": ["Laporan dan Rekomendasi Ke TPK & KS"], "pic": null, "dana": null, "kegiatan_full": "Menyusun rekomendasi perbaikan kepada TPK dan kepala sekolah", "target_str": null}, {"no": 7, "kegiatan": "Menyusun rekomendasi untuk perluasan implementasi ke Fase B dan C.", "sasaran": null, "indikator": ["Laporan dan Rekomendasi Perluasan ke BC"], "pic": null, "dana": null, "kegiatan_full": "Menyusun rekomendasi untuk perluasan implementasi ke Fase B dan C.", "target_str": null}]}, {"code": "D", "title": "Pendampingan Guru", "items": [{"no": 1, "kegiatan": "Menjadi narahubung akademik bagi guru terkait Cambridge.", "sasaran": null, "indikator": [], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menjadi narahubung akademik bagi guru terkait Cambridge.", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Memberikan pendampingan teknis kepada guru pengampu Cambridge", "sasaran": null, "indikator": ["Terlaksana Program pendampingan guru"], "pic": null, "dana": null, "kegiatan_full": "Memberikan pendampingan teknis kepada guru pengampu Cambridge", "target_str": null}, {"no": 3, "kegiatan": "Menyelenggarakan diskusi pembelajaran.", "sasaran": null, "indikator": ["Menyusun catatan selama coaching"], "pic": null, "dana": null, "kegiatan_full": "Menyelenggarakan diskusi pembelajaran.", "target_str": null}, {"no": 4, "kegiatan": "Mengoordinasikan lesson study atau peer observation.", "sasaran": null, "indikator": ["Laporan pendampingan"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan lesson study atau peer observation.", "target_str": null}, {"no": 5, "kegiatan": "Mengidentifikasi kebutuhan pelatihan guru.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi kebutuhan pelatihan guru.", "target_str": null}]}, {"code": "E", "title": "Pengembangan English Learning Culture", "items": [{"no": 1, "kegiatan": "Menyusun program peningkatan penggunaan Bahasa Inggris di lingkungan sekolah", "sasaran": null, "indikator": ["Terususun rencana dan program penggunaan Bahasa Inggris"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Menyusun program peningkatan penggunaan Bahasa Inggris di lingkungan sekolah", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Mengoordinasikan pelaksanaan English Day, English Week, atau program sejenis.", "sasaran": null, "indikator": ["Pelaksanaan English Day"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pelaksanaan English Day, English Week, atau program sejenis.", "target_str": null}, {"no": 3, "kegiatan": "Mendorong penggunaan classroom language oleh guru", "sasaran": null, "indikator": ["Daftar English Classroom Daily Usage"], "pic": null, "dana": null, "kegiatan_full": "Mendorong penggunaan classroom language oleh guru", "target_str": null}, {"no": 4, "kegiatan": "Menyusun daftar ungkapan Bahasa Inggris yang digunakan dalam aktivitas sekolah.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Menyusun daftar ungkapan Bahasa Inggris yang digunakan dalam aktivitas sekolah.", "target_str": null}, {"no": 5, "kegiatan": "Berkolaborasi dengan Wakasek Kesiswaan dalam kegiatan berbasis Bahasa Inggris", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Berkolaborasi dengan Wakasek Kesiswaan dalam kegiatan berbasis Bahasa Inggris", "target_str": null}, {"no": 6, "kegiatan": "Berkolaborasi dengan Kord.Quintal untuk menyediakan media pembelajaran Bahasa Inggris.", "sasaran": null, "indikator": ["Video pembelajaran/ konten in english"], "pic": null, "dana": null, "kegiatan_full": "Berkolaborasi dengan Kord.Quintal untuk menyediakan media pembelajaran Bahasa Inggris.", "target_str": null}]}, {"code": "F", "title": "Monitoring Implementasi Cambridge dan English Environment", "items": [{"no": 1, "kegiatan": "Melakukan observasi pembelajaran Cambridge.", "sasaran": null, "indikator": [], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Melakukan observasi pembelajaran Cambridge.", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Mengumpulkan data implementasi Cambridge dan English Daily Usage", "sasaran": null, "indikator": ["Catatan Implementasi"], "pic": null, "dana": null, "kegiatan_full": "Mengumpulkan data implementasi Cambridge dan English Daily Usage", "target_str": null}, {"no": 3, "kegiatan": "Mengidentifikasi praktik baik (best practices).", "sasaran": null, "indikator": ["Temuan Best Practise"], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi praktik baik (best practices).", "target_str": null}, {"no": 4, "kegiatan": "Mengidentifikasi hambatan implementasi.", "sasaran": null, "indikator": ["Hambatan pelaksanaan"], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi hambatan implementasi.", "target_str": null}, {"no": 5, "kegiatan": "Menyusun laporan monitoring.", "sasaran": null, "indikator": ["Laporan monitoring"], "pic": null, "dana": null, "kegiatan_full": "Menyusun laporan monitoring.", "target_str": null}]}]}, "Literasi": {"title": "Literasi", "programs": [{"code": "A", "title": "Pengembangan Budaya dan Program Literasi Sekolah", "items": []}, {"code": "B", "title": "Pengembangan Kemapuan Literasi Siswa", "items": [{"no": 1, "kegiatan": "Mengoordinasikan pengukuran Kecepatan Membaca (KPM) dan kemampuan pemahaman membaca.", "sasaran": null, "indikator": ["Tersusun database KPM dan Pemahaman"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengoordinasikan pengukuran Kecepatan Membaca (KPM) dan kemampuan pemahaman membaca.", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Menyusun profil kemampuan literasi setiap siswa.", "sasaran": null, "indikator": ["Profil Literasi Siswa"], "pic": null, "dana": null, "kegiatan_full": "Menyusun profil kemampuan literasi setiap siswa.", "target_str": null}, {"no": 3, "kegiatan": "Menganalisis perkembangan kemampuan membaca secara berkala.", "sasaran": null, "indikator": ["Analisis Perkembangan Literasi"], "pic": null, "dana": null, "kegiatan_full": "Menganalisis perkembangan kemampuan membaca secara berkala.", "target_str": null}, {"no": 4, "kegiatan": "Memberikan rekomendasi tindak lanjut kepada guru berdasarkan hasil pengukuran.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Memberikan rekomendasi tindak lanjut kepada guru berdasarkan hasil pengukuran.", "target_str": null}]}, {"code": "C", "title": "Pengembangan Karya dan Sumber Literasi", "items": [{"no": 1, "kegiatan": "Mengoordinasikan program penyusunan buku karya siswa dan guru", "sasaran": null, "indikator": ["Menyusun Buku karya siswa"], "pic": null, "dana": "APBS Rutin dan BOS Reguler", "kegiatan_full": "Mengoordinasikan program penyusunan buku karya siswa dan guru", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Mengembangkan budaya menulis di sekolah", "sasaran": null, "indikator": ["Menyusun buku karya guru"], "pic": null, "dana": null, "kegiatan_full": "Mengembangkan budaya menulis di sekolah", "target_str": null}, {"no": 3, "kegiatan": "Berkolaborasi dengan perpustakaan dalam pengelolaan bahan bacaan dan kunjungan perpustakaan.", "sasaran": null, "indikator": ["Bertambah koleksi buku sekolah"], "pic": null, "dana": null, "kegiatan_full": "Berkolaborasi dengan perpustakaan dalam pengelolaan bahan bacaan dan kunjungan perpustakaan.", "target_str": null}, {"no": 4, "kegiatan": "Mengembangkan koleksi sumber bacaan dan media literasi, baik cetak maupun digital.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengembangkan koleksi sumber bacaan dan media literasi, baik cetak maupun digital.", "target_str": null}, {"no": 5, "kegiatan": "Mengelola dokumentasi dan publikasi karya literasi siswa dan guru", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengelola dokumentasi dan publikasi karya literasi siswa dan guru", "target_str": null}]}, {"code": "D", "title": "Pendampingan dan Koordinasi Program Literasi", "items": [{"no": 1, "kegiatan": "Mendampingi guru dalam mengintegrasikan literasi ke dalam pembelajaran", "sasaran": null, "indikator": ["Menyusun program Pendampingan Guru"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mendampingi guru dalam mengintegrasikan literasi ke dalam pembelajaran", "target_str": "Agustus 2026 - Mei 2027"}, {"no": 2, "kegiatan": "Mengoordinasikan pelaksanaan program literasi bersama guru, pustakawan, dan unit terkait.", "sasaran": null, "indikator": ["Menyusun Kebutuhan pengembangan kompetensi literasi guru"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pelaksanaan program literasi bersama guru, pustakawan, dan unit terkait.", "target_str": null}, {"no": 3, "kegiatan": "Mengidentifikasi kebutuhan pengembangan kompetensi guru dalam bidang literasi.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi kebutuhan pengembangan kompetensi guru dalam bidang literasi.", "target_str": null}, {"no": 4, "kegiatan": "Menjadi narahubung program literasi sekolah.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Menjadi narahubung program literasi sekolah.", "target_str": null}]}, {"code": "E", "title": "Monitoring, Evaluasi, dan Pengembangan Program Literasi", "items": [{"no": 1, "kegiatan": "Melakukan monitoring seluruh program literasi sekolah (Kord.Kesiswaan)", "sasaran": null, "indikator": ["Laporan Monitoring dan Evaluasi"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Melakukan monitoring seluruh program literasi sekolah (Kord.Kesiswaan)", "target_str": "Des 2026 dan Juni 2027"}, {"no": 2, "kegiatan": "Mengumpulkan dan menganalisis data ketercapaian program literasi.", "sasaran": null, "indikator": ["Rekomendasi Pengembangan Program."], "pic": null, "dana": null, "kegiatan_full": "Mengumpulkan dan menganalisis data ketercapaian program literasi.", "target_str": null}, {"no": 3, "kegiatan": "Memberikan rekomendasi pengembangan program kepada Wakasek Kurikulum dan Tim Pengembang Kurikulum (TPK).", "sasaran": null, "indikator": ["Rekap Apresiasi dan Rekognisi Literasi."], "pic": null, "dana": null, "kegiatan_full": "Memberikan rekomendasi pengembangan program kepada Wakasek Kurikulum dan Tim Pengembang Kurikulum (TPK).", "target_str": null}, {"no": 4, "kegiatan": "Mengoordinasikan pemberian apresiasi dan rekognisi kepada siswa, guru, maupun kelas yang menunjukkan capaian literasi terbaik.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pemberian apresiasi dan rekognisi kepada siswa, guru, maupun kelas yang menunjukkan capaian literasi terbaik.", "target_str": null}]}]}, "Keagamaan": {"title": "Keagamaan", "programs": [{"code": "A", "title": "Pengembangan dan Program Pembinaan", "items": [{"no": 1, "kegiatan": "Mengoordinasikan pelaksanaan ibadah harian, mingguan, dan kegiatan kerohanian murid sesuai agama masing-masing.", "sasaran": null, "indikator": ["Menyusun Program kerja keagamaan"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengoordinasikan pelaksanaan ibadah harian, mingguan, dan kegiatan kerohanian murid sesuai agama masing-masing.", "target_str": null}, {"no": 2, "kegiatan": "Mengoordinasikan pelaksanaan peringatan Hari Besar Keagamaan seluruh agama yang ada di sekolah.", "sasaran": null, "indikator": ["Menyusun Kalender kagiatan keagamaan"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pelaksanaan peringatan Hari Besar Keagamaan seluruh agama yang ada di sekolah.", "target_str": "Agustus 2026"}, {"no": 3, "kegiatan": "Mengoordinasikan pembinaan kerohanian guru dan tenaga kependidikan sesuai agama masing-masing.", "sasaran": null, "indikator": ["Menyusun Laporan pelaksanaan program"], "pic": null, "dana": null, "kegiatan_full": "Mengoordinasikan pembinaan kerohanian guru dan tenaga kependidikan sesuai agama masing-masing.", "target_str": "Agustus 2026"}, {"no": 4, "kegiatan": "Mengembangkan budaya sekolah yang religius, toleran, dan saling menghormati.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengembangkan budaya sekolah yang religius, toleran, dan saling menghormati.", "target_str": "Juni 2027"}]}, {"code": "B", "title": "Pengelolaan Layanan dan Sarana Keagamaan", "items": [{"no": 1, "kegiatan": "Mengoordinasikan penggunaan dan pemeliharaan enam tempat ibadah di lingkungan sekolah bersama Wakasek Sarana Prasarana.", "sasaran": null, "indikator": ["Menyusun Jadwal penggunaan tempat ibadah."], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Mengoordinasikan penggunaan dan pemeliharaan enam tempat ibadah di lingkungan sekolah bersama Wakasek Sarana Prasarana.", "target_str": "Agustus 2026 - Juni 2027"}, {"no": 2, "kegiatan": "Memastikan seluruh murid memperoleh layanan pembinaan keagamaan sesuai agama yang dianut.", "sasaran": null, "indikator": ["Menyusun Data layanan keagamaan."], "pic": null, "dana": null, "kegiatan_full": "Memastikan seluruh murid memperoleh layanan pembinaan keagamaan sesuai agama yang dianut.", "target_str": null}, {"no": 3, "kegiatan": "Berkoordinasi dengan guru agama, pembina rohani, dan pihak terkait dalam penyelenggaraan kegiatan keagamaan.", "sasaran": null, "indikator": ["Menyusun Rekomendasi pengembangan sarana keagamaan."], "pic": null, "dana": null, "kegiatan_full": "Berkoordinasi dengan guru agama, pembina rohani, dan pihak terkait dalam penyelenggaraan kegiatan keagamaan.", "target_str": null}, {"no": 4, "kegiatan": "Mengidentifikasi kebutuhan sarana, prasarana, dan sumber belajar keagamaan.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengidentifikasi kebutuhan sarana, prasarana, dan sumber belajar keagamaan.", "target_str": null}]}, {"code": "C", "title": "Monitoring, Evaluasi, dan Pengembangan Program Keagamaan", "items": [{"no": 1, "kegiatan": "Melakukan monitoring pelaksanaan seluruh program keagamaan.", "sasaran": null, "indikator": ["Menyusun Laporan Monev"], "pic": null, "dana": "APBS Rutin", "kegiatan_full": "Melakukan monitoring pelaksanaan seluruh program keagamaan.", "target_str": "Desember 2026 dan Juni 2027"}, {"no": 2, "kegiatan": "Mengumpulkan dan menganalisis data keterlaksanaan kegiatan keagamaan", "sasaran": null, "indikator": ["Menyusun rekomendasi pengembangan Program"], "pic": null, "dana": null, "kegiatan_full": "Mengumpulkan dan menganalisis data keterlaksanaan kegiatan keagamaan", "target_str": null}, {"no": 3, "kegiatan": "Menyusun laporan pelaksanaan setiap semester.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Menyusun laporan pelaksanaan setiap semester.", "target_str": null}, {"no": 4, "kegiatan": "Memberikan rekomendasi pengembangan program kepada Wakasek Kurikulum dan Tim Pengembang Kurikulum (TPK).", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Memberikan rekomendasi pengembangan program kepada Wakasek Kurikulum dan Tim Pengembang Kurikulum (TPK).", "target_str": null}, {"no": 5, "kegiatan": "Mengembangkan program yang memperkuat karakter religius, moderasi beragama, serta sikap saling menghormati dalam keberagaman.", "sasaran": null, "indikator": [], "pic": null, "dana": null, "kegiatan_full": "Mengembangkan program yang memperkuat karakter religius, moderasi beragama, serta sikap saling menghormati dalam keberagaman.", "target_str": null}]}]}};
+</script>
+
+<script>
+const MONTHS = {
+  'jan':0,'januari':0,'feb':1,'februari':1,'mar':2,'maret':2,'apr':3,'april':3,
+  'mei':4,'jun':5,'juni':5,'jul':6,'juli':6,'ags':7,'agu':7,'agustus':7,
+  'sep':8,'september':8,'okt':9,'oktober':9,'nov':10,'november':10,'des':11,'desember':11
+};
+
+function parseLatestDeadline(str){
+  if(!str) return null;
+  const s = str.toLowerCase();
+  const re = /([a-z]{3,9})\.?\s*'?(\d{2,4})/g;
+  let m, best = null;
+  while((m = re.exec(s)) !== null){
+    let monIdx = MONTHS[m[1]] ?? MONTHS[m[1].slice(0,3)];
+    if(monIdx === undefined) continue;
+    let yr = parseInt(m[2],10);
+    if(yr < 100) yr += 2000;
+    const d = new Date(yr, monIdx+1, 0);
+    if(!best || d > best) best = d;
+  }
+  return best;
+}
+
+function itemId(bidangKey, progCode, no){
+  return `${bidangKey}_${progCode}_${no}`; // Valid firestore doc id format
+}
+
+function debounce(fn, ms){
+  let t;
+  return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), ms); };
+}
+
+function escapeHtml(s){
+  if(s===null || s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let PROGRESS = {};
+const NOW = new Date(2026, 7, 13);
+const filters = { search:'', status:'all', lateOnly:false };
+
+// Setup Sinkronisasi Firestore Real-Time
+async function initFirebaseSync(){
+  window.addEventListener('firebase-ready', async () => {
+    const { doc, onSnapshot } = window.firebaseModules;
+    const db = window.db;
+
+    // Mendengarkan perubahan data secara real-time dari dokumen 'rkt_progress/data' di Firestore
+    const docRef = doc(db, "rkt_progress", "data");
+    onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        PROGRESS = docSnap.data() || {};
+      } else {
+        PROGRESS = {};
+      }
+      renderAll();
+    }, (error) => {
+      console.error("Gagal mendengarkan perubahan realtime:", error);
+    });
+  });
+}
+
+const persistProgress = debounce(async (updatedProgress) => {
+  if(!window.db) return;
+  try {
+    const { doc, setDoc } = window.firebaseModules;
+    await setDoc(doc(window.db, "rkt_progress", "data"), updatedProgress);
+  } catch(e) {
+    console.error("Gagal menyimpan ke Firestore:", e);
+  }
+}, 300);
+
+function getEntry(id){
+  return PROGRESS[id] || { checks:{}, catatan:'', updatedAt:null };
+}
+
+function setCheck(id, idx, val){
+  const cur = getEntry(id);
+  const checks = { ...cur.checks, [idx]: val };
+  PROGRESS[id] = { ...cur, checks, updatedAt: Date.now() };
+  persistProgress(PROGRESS);
+}
+
+function setNote(id, catatan){
+  const cur = getEntry(id);
+  PROGRESS[id] = { ...cur, catatan, updatedAt: Date.now() };
+  persistProgress(PROGRESS);
+}
+
+function trackCount(item){
+  return (item.indikator && item.indikator.length) ? item.indikator.length : 1;
+}
+function indPct(checks, idx){
+  const v = checks[idx];
+  if(typeof v === 'number') return v;
+  return v ? 100 : 0;
+}
+function computeProgress(f){
+  const n = trackCount(f.item);
+  const checks = getEntry(f.id).checks || {};
+  let sum = 0;
+  for(let i=0;i<n;i++){ sum += indPct(checks, i); }
+  return Math.round(sum / n);
+}
+
+function statusFromProgress(p){
+  if(p >= 100) return 'selesai';
+  if(p > 0) return 'proses';
+  return 'belum';
+}
+
+const FLAT = []; 
+for(const bidangKey of Object.keys(RKT_DATA)){
+  const b = RKT_DATA[bidangKey];
+  for(const prog of b.programs){
+    for(const it of prog.items){
+      const id = itemId(bidangKey, prog.code, it.no);
+      FLAT.push({ bidangKey, bidangTitle: b.title, progCode: prog.code, progTitle: prog.title, no: it.no, item: it, id });
+    }
+  }
+}
+
+function bidangKeys(){ return Object.keys(RKT_DATA); }
+
+function bidangStats(bidangKey){
+  const items = FLAT.filter(f => f.bidangKey === bidangKey);
+  let sum = 0, done = 0;
+  items.forEach(f => { const p = computeProgress(f); sum += p; if(p>=100) done++; });
+  const pct = items.length ? Math.round(sum/items.length) : 0;
+  return { total: items.length, done, pct };
+}
+
+function overallStats(){
+  let sum=0, done=0, proses=0, belum=0, late=0;
+  FLAT.forEach(f => {
+    const p = computeProgress(f);
+    sum += p;
+    const st = statusFromProgress(p);
+    if(st==='selesai') done++; else if(st==='proses') proses++; else belum++;
+    const dl = parseLatestDeadline(f.item.target_str);
+    if(dl && dl < NOW && p < 100) late++;
+  });
+  const pct = FLAT.length ? Math.round(sum/FLAT.length) : 0;
+  return { total: FLAT.length, done, proses, belum, late, pct };
+}
+
+function renderTopStats(){
+  const s = overallStats();
+  const topStats = document.getElementById('topStats');
+  topStats.querySelectorAll('.top-stat').forEach(n=>n.remove());
+  const mk = (cls, n, l) => {
+    const d = document.createElement('div');
+    d.className = 'top-stat ' + cls;
+    d.innerHTML = `<div class="n">${n}</div><div class="l">${l}</div>`;
+    return d;
+  };
+  const ringWrap = topStats.querySelector('.ring-wrap');
+  topStats.insertBefore(mk('', s.total, 'Total Kegiatan'), ringWrap);
+  topStats.insertBefore(mk('done', s.done, 'Selesai'), ringWrap);
+  topStats.insertBefore(mk('progress', s.proses, 'Proses'), ringWrap);
+  topStats.insertBefore(mk('late', s.late, 'Terlambat'), ringWrap);
+
+  const circ = 2 * Math.PI * 34;
+  const ring = document.getElementById('ringProgress');
+  ring.setAttribute('stroke-dasharray', circ);
+  ring.setAttribute('stroke-dashoffset', circ - (s.pct/100)*circ);
+  document.getElementById('ringPct').textContent = s.pct + '%';
+}
+
+function renderBidangGrid(){
+  const grid = document.getElementById('bidangGrid');
+  grid.innerHTML = '';
+  bidangKeys().forEach(bk => {
+    const st = bidangStats(bk);
+    const title = RKT_DATA[bk].title;
+    const chip = document.createElement('div');
+    chip.className = 'bidang-chip';
+    chip.innerHTML = `
+      <div class="row1"><span class="name">${escapeHtml(title.replace(/^[A-Z]\.\s*/,''))}</span><span class="pct">${st.pct}%</span></div>
+      <div class="bar"><i style="width:${st.pct}%"></i></div>
+      <div class="count">${st.done}/${st.total} kegiatan selesai</div>
+    `;
+    grid.appendChild(chip);
+  });
+}
+
+let openGroups = new Set(bidangKeys());
+
+function matchesFilters(f){
+  const p = computeProgress(f);
+  const st = statusFromProgress(p);
+  if(filters.status !== 'all' && st !== filters.status) return false;
+  if(filters.lateOnly){
+    const dl = parseLatestDeadline(f.item.target_str);
+    if(!(dl && dl < NOW && p < 100)) return false;
+  }
+  if(filters.search){
+    const q = filters.search.toLowerCase();
+    const hay = [f.item.kegiatan_full, f.progTitle, f.bidangTitle, ...(f.item.indikator||[]), f.item.dana, f.item.pic]
+      .filter(Boolean).join(' ').toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+function renderList(){
+  const root = document.getElementById('listRoot');
+  root.innerHTML = '';
+  
+  const visibleItems = FLAT.filter(matchesFilters);
+  if(visibleItems.length === 0){
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+
+  const bidangMap = new Map();
+  visibleItems.forEach(f => {
+    if(!bidangMap.has(f.bidangKey)) bidangMap.set(f.bidangKey, []);
+    bidangMap.get(f.bidangKey).push(f);
+  });
+
+  bidangKeys().forEach(bk => {
+    const itemsInBidang = bidangMap.get(bk);
+    if(!itemsInBidang || itemsInBidang.length === 0) return;
+
+    const st = bidangStats(bk);
+    const group = document.createElement('div');
+    group.className = 'bidang-group open';
+    group.innerHTML = `
+      <div class="bidang-head" data-bk="${bk}">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>
+        <div class="title-block">
+          <div class="t1">${escapeHtml(RKT_DATA[bk].title)}</div>
+          <div class="t2">${itemsInBidang.length} kegiatan sesuai filter</div>
+        </div>
+        <div class="mini-bar"><i style="width:${st.pct}%"></i></div>
+        <div class="pctnum">${st.pct}%</div>
+      </div>
+      <div class="bidang-body"></div>
+    `;
+
+    group.querySelector('.bidang-head').addEventListener('click', () => {
+      if(openGroups.has(bk)) openGroups.delete(bk); else openGroups.add(bk);
+      group.classList.toggle('open');
+    });
+
+    const body = group.querySelector('.bidang-body');
+    const progMap = new Map();
+    itemsInBidang.forEach(f => {
+      const key = f.progCode + '::' + f.progTitle;
+      if(!progMap.has(key)) progMap.set(key, []);
+      progMap.get(key).push(f);
+    });
+
+    for(const [key, items] of progMap.entries()){
+      const [code, ...rest] = key.split('::');
+      const progBlock = document.createElement('div');
+      progBlock.className = 'program-block';
+      progBlock.innerHTML = `<div class="program-title"><span class="code">${escapeHtml(code)}</span>${escapeHtml(rest.join('::'))}</div>`;
+      items.sort((a,b)=>a.no-b.no).forEach(f => progBlock.appendChild(renderItemCard(f)));
+      body.appendChild(progBlock);
+    }
+
+    root.appendChild(group);
+  });
+}
+
+function renderItemCard(f){
+  const entry = getEntry(f.id);
+  const checks = entry.checks || {};
+  const hasIndikator = f.item.indikator && f.item.indikator.length > 0;
+  const trackItems = hasIndikator ? f.item.indikator : ['Kegiatan ini terlaksana / selesai'];
+  const p = computeProgress(f);
+  const st = statusFromProgress(p);
+  const dl = parseLatestDeadline(f.item.target_str);
+  const isLate = dl && dl < NOW && p < 100;
+
+  const card = document.createElement('div');
+  card.className = 'item-card';
+
+  const QUICK = [0,25,50,75,100];
+  const checklistHtml = trackItems.map((txt, idx) => {
+    const v = indPct(checks, idx);
+    const quickBtns = QUICK.map(q => `<button type="button" data-idx="${idx}" data-q="${q}" class="${v===q?'active':''}">${q}%</button>`).join('');
+    return `
+    <li class="ind-row ${v>=100?'done':''}" data-idx="${idx}">
+      <div class="ind-label"><span class="ind-check">${v>=100?'✓':''}</span><span class="ind-label-text">${escapeHtml(txt)}</span></div>
+      <div class="ind-bar-wrap">
+        <input type="range" class="ind-slider" min="0" max="100" step="5" value="${v}" data-idx="${idx}" style="--pct:${v}%">
+        <span class="ind-pct">${v}%</span>
+      </div>
+      <div class="ind-quick">${quickBtns}</div>
+    </li>
+  `;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="item-top">
+      <div class="item-no">${f.no}</div>
+      <div class="item-main">
+        <div class="item-name">${escapeHtml(f.item.kegiatan_full)}</div>
+        <ul class="item-indikator checklist ${hasIndikator ? '' : 'no-indikator'}">${checklistHtml}</ul>
+        <div class="item-meta">
+          ${!hasIndikator ? `<span class="tag noind">Progres berdasarkan kegiatan (tanpa indikator rinci)</span>` : ''}
+          ${f.item.target_str ? `<span class="tag ${isLate?'late':'target'}">${isLate?'⚠ Terlambat · ':'🗓 '}${escapeHtml(f.item.target_str)}</span>` : ''}
+          ${f.item.dana ? `<span class="tag dana">💰 ${escapeHtml(f.item.dana)}</span>` : ''}
+          ${f.item.pic ? `<span class="tag pic">${escapeHtml(f.item.pic)}</span>` : ''}
+        </div>
+        <div class="note-box" style="display:none;">
+          <textarea placeholder="Catatan progres…">${escapeHtml(entry.catatan||'')}</textarea>
+          <div class="note-meta"></div>
+        </div>
+        <button class="note-toggle" style="margin-top:8px;">${entry.catatan ? 'Lihat catatan' : '+ Tambah catatan'}</button>
+      </div>
+      <div class="item-side">
+        <span class="status-badge st-${st}">${st==='belum'?'Belum Mulai':st==='proses'?'Proses':'Selesai'}</span>
+        <div class="progress-row">
+          <div class="mini-bar" style="flex:1;"><i style="width:${p}%"></i></div>
+          <span class="pnum">${p}%</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function refreshIndRow(row, idx, v){
+    row.classList.toggle('done', v>=100);
+    row.querySelector('.ind-check').textContent = v>=100 ? '✓' : '';
+    const slider = row.querySelector('.ind-slider');
+    slider.value = v;
+    slider.style.setProperty('--pct', v + '%');
+    row.querySelector('.ind-pct').textContent = v + '%';
+    row.querySelectorAll('.ind-quick button').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.q,10) === v);
+    });
+  }
+
+  function applyIndChange(idx, v){
+    setCheck(f.id, idx, v);
+    const row = card.querySelector(`.ind-row[data-idx="${idx}"]`);
+    refreshIndRow(row, idx, v);
+
+    const newP = computeProgress(f);
+    const newSt = statusFromProgress(newP);
+    const badge = card.querySelector('.status-badge');
+    badge.className = 'status-badge st-' + newSt;
+    badge.textContent = newSt==='belum'?'Belum Mulai':newSt==='proses'?'Proses':'Selesai';
+    card.querySelector('.progress-row .mini-bar > i').style.width = newP + '%';
+    card.querySelector('.progress-row .pnum').textContent = newP + '%';
+    renderTopStats(); renderBidangGrid();
+  }
+
+  card.querySelectorAll('.ind-slider').forEach(slider => {
+    slider.addEventListener('input', () => {
+      const idx = parseInt(slider.dataset.idx, 10);
+      const v = parseInt(slider.value, 10);
+      slider.style.setProperty('--pct', v + '%');
+      applyIndChange(idx, v);
+    });
+  });
+
+  card.querySelectorAll('.ind-quick button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const q = parseInt(btn.dataset.q, 10);
+      applyIndChange(idx, q);
+    });
+  });
+
+  const noteBox = card.querySelector('.note-box');
+  const noteToggle = card.querySelector('.note-toggle');
+  const textarea = noteBox.querySelector('textarea');
+  const noteMeta = noteBox.querySelector('.note-meta');
+  if(entry.updatedAt){
+    noteMeta.textContent = 'Diperbarui ' + new Date(entry.updatedAt).toLocaleString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+  noteToggle.addEventListener('click', () => {
+    const showing = noteBox.style.display !== 'none';
+    noteBox.style.display = showing ? 'none' : 'block';
+    noteToggle.textContent = showing ? (textarea.value ? 'Lihat catatan' : '+ Tambah catatan') : 'Sembunyikan catatan';
+  });
+  const saveNote = debounce(() => {
+    setNote(f.id, textarea.value);
+    noteMeta.textContent = 'Diperbarui ' + new Date().toLocaleString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }, 500);
+  textarea.addEventListener('input', saveNote);
+
+  return card;
+}
+
+document.getElementById('searchInput').addEventListener('input', debounce((e) => {
+  filters.search = e.target.value.trim();
+  renderList();
+}, 200));
+
+document.querySelectorAll('.chip-btn[data-status]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chip-btn[data-status]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    filters.status = btn.dataset.status;
+    renderList();
+  });
+});
+
+document.getElementById('lateToggle').addEventListener('click', () => {
+  filters.lateOnly = !filters.lateOnly;
+  document.getElementById('lateToggle').classList.toggle('active', filters.lateOnly);
+  renderList();
+});
+
+document.getElementById('expandAllBtn').addEventListener('click', () => {
+  const allOpen = bidangKeys().every(bk => openGroups.has(bk));
+  if(allOpen){ openGroups.clear(); }
+  else { bidangKeys().forEach(bk => openGroups.add(bk)); }
+  renderList();
+});
+
+function renderAll(){
+  renderTopStats();
+  renderBidangGrid();
+  renderList();
+}
+
+// Jalankan sinkronisasi real-time Firebase saat halaman dimuat
+initFirebaseSync();
+</script>
+</body>
+</html>

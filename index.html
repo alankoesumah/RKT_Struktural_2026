@@ -77,18 +77,18 @@
 
 <style>
   :root{
-    --ink:#0F2D2B;
-    --teal-950:#0B2321;
-    --teal-900:#0F3735;
-    --teal-800:#144A46;
-    --teal-700:#1B615B;
-    --teal-100:#DCEAE8;
-    --paper:#F6F4EE;
-    --paper-2:#FBFAF6;
-    --gold:#C8932F;
-    --gold-100:#F4E6C8;
-    --line:#E4DFD1;
-    --gray-500:#8A8477;
+    --ink:#2A2140;
+    --teal-950:#241A38;
+    --teal-900:#332352;
+    --teal-800:#48336F;
+    --teal-700:#6A4C9C;
+    --teal-100:#EBE4F7;
+    --paper:#F8F6FC;
+    --paper-2:#FCFBFE;
+    --gold:#B8863E;
+    --gold-100:#F1E4CC;
+    --line:#E4DCF2;
+    --gray-500:#8D82A0;
     --status-belum:#9A9384;
     --status-belum-bg:#EDEBE3;
     --status-proses:#B9791A;
@@ -98,7 +98,7 @@
     --status-late:#B23A2E;
     --status-late-bg:#F6DFD9;
     --radius:10px;
-    --shadow: 0 1px 2px rgba(15,45,43,0.06), 0 6px 20px -8px rgba(15,45,43,0.12);
+    --shadow: 0 1px 2px rgba(42,33,64,0.07), 0 6px 20px -8px rgba(42,33,64,0.14);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -127,6 +127,20 @@
     background-image: radial-gradient(circle at 85% 15%, rgba(200,147,47,0.22), transparent 45%),
                        radial-gradient(circle at 10% 90%, rgba(200,147,47,0.12), transparent 40%);
     pointer-events:none;
+  }
+  .header-logo{
+    position:absolute;
+    top:22px;
+    right:28px;
+    height:48px;
+    width:auto;
+    z-index:2;
+    border-radius:8px;
+    background:rgba(255,255,255,0.9);
+    padding:5px 8px;
+  }
+  @media (max-width:720px){
+    .header-logo{ height:36px; top:16px; right:16px; padding:4px 6px; }
   }
   .eyebrow{
     font-family:'JetBrains Mono',monospace;
@@ -283,6 +297,11 @@
     border-radius:14px;
     margin-bottom:14px;
     overflow:hidden;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .bidang-group.active{
+    border-color:var(--gold);
+    box-shadow:0 0 0 2px var(--gold-100);
   }
   .bidang-head{
     display:flex;
@@ -400,12 +419,12 @@
   }
   .ind-slider::-webkit-slider-thumb{
     -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
-    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(15,45,43,0.35);
+    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(42,33,64,0.35);
     cursor:pointer;
   }
   .ind-slider::-moz-range-thumb{
     width:15px; height:15px; border-radius:50%;
-    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(15,45,43,0.35);
+    background:var(--gold); border:2px solid #fff; box-shadow:0 1px 3px rgba(42,33,64,0.35);
     cursor:pointer;
   }
   .ind-slider::-moz-range-track{height:8px; border-radius:4px; background:var(--teal-100);}
@@ -512,6 +531,7 @@
 <div class="wrap">
 
   <header class="top">
+    <img src="https://res.cloudinary.com/USERNAME/image/upload/v1234567890/logo_config_-_sd_portrait_white_no_border_nqknmu.png" alt="Logo" class="header-logo">
     <p class="eyebrow">Rencana Kerja Tahunan · 2026/2027</p>
     <h1>Monitor Progres Kerja Tim Struktural</h1>
     <p class="sub">SD Nasional Plus Tunas Global — pantau ketercapaian program &amp; kegiatan tiap bidang melalui indikator ketercapaian. Progres kegiatan dihitung otomatis dari indikator yang sudah tercapai; jika sebuah kegiatan tidak memiliki indikator rinci, progres dihitung dari kegiatan itu sendiri.</p>
@@ -604,7 +624,7 @@ function escapeHtml(s){
 
 let PROGRESS = {};
 const NOW = new Date(2026, 7, 13);
-const filters = { search:'', status:'all', lateOnly:false };
+const filters = { search:'', status:'all', lateOnly:false, activeBidang:null };
 
 // Setup Sinkronisasi Firestore Real-Time
 async function initFirebaseSync(){
@@ -740,13 +760,28 @@ function renderBidangGrid(){
   bidangKeys().forEach(bk => {
     const st = bidangStats(bk);
     const title = RKT_DATA[bk].title;
-    const chip = document.createElement('div');
-    chip.className = 'bidang-chip';
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'bidang-chip' + (filters.activeBidang === bk ? ' active' : '');
     chip.innerHTML = `
       <div class="row1"><span class="name">${escapeHtml(title.replace(/^[A-Z]\.\s*/,''))}</span><span class="pct">${st.pct}%</span></div>
       <div class="bar"><i style="width:${st.pct}%"></i></div>
       <div class="count">${st.done}/${st.total} kegiatan selesai</div>
     `;
+    chip.addEventListener('click', () => {
+      if(filters.activeBidang === bk){
+        filters.activeBidang = null;
+      } else {
+        filters.activeBidang = bk;
+        openGroups.add(bk);
+      }
+      renderBidangGrid();
+      renderList();
+      if(filters.activeBidang){
+        const target = document.querySelector(`.bidang-group[data-bk="${bk}"]`);
+        if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    });
     grid.appendChild(chip);
   });
 }
@@ -787,13 +822,18 @@ function renderList(){
     bidangMap.get(f.bidangKey).push(f);
   });
 
-  bidangKeys().forEach(bk => {
+  bidangKeys().slice().sort((a, b) => {
+    if(filters.activeBidang === a) return -1;
+    if(filters.activeBidang === b) return 1;
+    return 0;
+  }).forEach(bk => {
     const itemsInBidang = bidangMap.get(bk);
     if(!itemsInBidang || itemsInBidang.length === 0) return;
 
     const st = bidangStats(bk);
     const group = document.createElement('div');
-    group.className = 'bidang-group open';
+    group.className = 'bidang-group open' + (filters.activeBidang === bk ? ' active' : '');
+    group.dataset.bk = bk;
     group.innerHTML = `
       <div class="bidang-head" data-bk="${bk}">
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>

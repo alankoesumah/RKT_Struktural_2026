@@ -6,6 +6,8 @@
 <title>Monitor Progres Kerja Tim Struktural — SD Nasional Plus Tunas Global</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<!-- Google Identity Services (untuk login & akses Google Drive) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Firebase App (Modular SDK dari CDN) -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -29,6 +31,48 @@
   window.db = db;
   window.firebaseModules = { doc, getDoc, setDoc, onSnapshot };
   window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<!-- ============================================================
+     KONFIGURASI GOOGLE DRIVE — WAJIB DIISI SEBELUM TOMBOL UPLOAD/CEK DOKUMEN BERFUNGSI
+     ============================================================
+     Langkah setup (sekali saja):
+     1. Buka https://console.cloud.google.com → buat/pilih sebuah project.
+     2. Menu "APIs & Services" → "Library" → cari "Google Drive API" → Enable.
+     3. Menu "APIs & Services" → "OAuth consent screen" → pilih "External" (atau
+        "Internal" jika pakai Google Workspace sekolah) → isi nama app, email,
+        lalu di bagian "Test users" tambahkan alamat Gmail yang akan dipakai
+        untuk login (selama status app masih "Testing" ini cukup, tidak perlu
+        verifikasi Google).
+     4. Menu "APIs & Services" → "Credentials" → "Create Credentials" →
+        "OAuth client ID" → Application type: "Web application".
+        Di "Authorized JavaScript origins" tambahkan domain tempat file HTML
+        ini akan diakses, misalnya https://nama-domain-anda.com atau
+        http://localhost:5500 saat uji coba lokal via server (BUKAN dibuka
+        langsung sebagai file:// — Google Sign-In tidak mengizinkan itu).
+     5. Salin "Client ID" yang muncul, tempel ke GOOGLE_CLIENT_ID di bawah ini.
+     6. Di Google Drive, siapkan 10 folder (satu per bidang, boleh pakai folder
+        yang sudah ada). Buka tiap folder, salin ID dari URL-nya:
+        https://drive.google.com/drive/folders/►ID_FOLDER_DI_SINI◄
+        lalu tempel ke DRIVE_FOLDER_IDS sesuai bidangnya di bawah ini.
+     ============================================================ -->
+<script>
+  window.DRIVE_CONFIG = {
+    GOOGLE_CLIENT_ID: "", // <-- contoh: "1234567890-abcxyz.apps.googleusercontent.com"
+    SCOPE: "https://www.googleapis.com/auth/drive",
+    DRIVE_FOLDER_IDS: {
+      TPK:        "",
+      Kurikulum:  "",
+      Kesiswaan:  "",
+      SarPras:    "",
+      Bendahara:  "",
+      LMS:        "",
+      Operator:   "",
+      Cambridge:  "",
+      Literasi:   "",
+      Keagamaan:  ""
+    }
+  };
 </script>
 
 <style>
@@ -400,6 +444,54 @@
   }
   .note-meta{font-size:10px; color:var(--gray-500); margin-top:4px;}
 
+  /* ---------- Google Drive doc actions ---------- */
+  .doc-actions{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; align-items:center;}
+  .doc-btn{
+    border:1px solid var(--line); background:#fff; color:var(--teal-800);
+    font-family:inherit; font-size:11px; font-weight:700; padding:6px 10px;
+    border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+    transition:all .12s;
+  }
+  .doc-btn:hover{border-color:var(--teal-700); background:var(--teal-100);}
+  .doc-btn:disabled{opacity:.45; cursor:not-allowed;}
+  .doc-btn.upload{color:#fff; background:var(--teal-800); border-color:var(--teal-800);}
+  .doc-btn.upload:hover{background:var(--teal-700);}
+  .doc-count{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--gray-500);
+    background:#EFEEE6; border-radius:20px; padding:2px 8px;
+  }
+  .doc-count.has-docs{color:var(--status-selesai); background:var(--status-selesai-bg); font-weight:700;}
+  .doc-panel{
+    display:none; margin-top:8px; border:1px solid var(--line); border-radius:8px;
+    background:var(--paper-2); padding:8px 10px;
+  }
+  .doc-panel.open{display:block;}
+  .doc-panel .doc-empty{font-size:11.5px; color:var(--gray-500); padding:4px 2px;}
+  .doc-panel .doc-loading{font-size:11.5px; color:var(--gray-500); padding:4px 2px;}
+  .doc-file-row{
+    display:flex; align-items:center; gap:8px; padding:5px 2px;
+    border-bottom:1px solid var(--line); font-size:12px;
+  }
+  .doc-file-row:last-child{border-bottom:none;}
+  .doc-file-row a{color:var(--teal-800); font-weight:600; text-decoration:none; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .doc-file-row a:hover{text-decoration:underline;}
+  .doc-file-row .doc-date{flex:none; font-size:10.5px; color:var(--gray-500); font-family:'JetBrains Mono',monospace;}
+
+  .drive-status{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600;
+    padding:7px 12px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08); color:#F3F1E7;
+  }
+  .drive-status:hover{background:rgba(255,255,255,0.16);}
+  .drive-status .dot{width:7px; height:7px; border-radius:50%; background:#C6C0AE;}
+  .drive-status.connected .dot{background:#8FE0AE;}
+
+  .config-banner{
+    margin-top:16px; background:var(--status-proses-bg); border:1px solid #E0BC7D;
+    color:#6B4E15; border-radius:10px; padding:12px 16px; font-size:12.5px; line-height:1.6;
+  }
+  .config-banner code{background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+
   .empty-state{
     text-align:center; padding:50px 20px; color:var(--gray-500); font-size:13.5px;
   }
@@ -424,6 +516,9 @@
     <h1>Monitor Progres Kerja Tim Struktural</h1>
     <p class="sub">SD Nasional Plus Tunas Global — pantau ketercapaian program &amp; kegiatan tiap bidang melalui indikator ketercapaian. Progres kegiatan dihitung otomatis dari indikator yang sudah tercapai; jika sebuah kegiatan tidak memiliki indikator rinci, progres dihitung dari kegiatan itu sendiri.</p>
     <div class="top-stats" id="topStats">
+      <button class="drive-status" id="driveStatusBtn" type="button">
+        <span class="dot"></span><span id="driveStatusText">Hubungkan Google Drive</span>
+      </button>
       <div class="ring-wrap">
         <svg class="ring" viewBox="0 0 80 80" id="ringSvg">
           <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
@@ -436,6 +531,8 @@
       </div>
     </div>
   </header>
+
+  <div class="config-banner" id="configBanner" style="display:none;"></div>
 
   <section class="overview">
     <h2>Ringkasan per Bidang</h2>
@@ -782,6 +879,13 @@ function renderItemCard(f){
           <div class="note-meta"></div>
         </div>
         <button class="note-toggle" style="margin-top:8px;">${entry.catatan ? 'Lihat catatan' : '+ Tambah catatan'}</button>
+        <div class="doc-actions" id="docActions-${f.id}">
+          <button type="button" class="doc-btn upload">📤 Upload Dokumen</button>
+          <button type="button" class="doc-btn check">📄 Cek Dokumen</button>
+          <span class="doc-count" style="display:none;"></span>
+          <input type="file" class="doc-file-input" style="display:none;">
+        </div>
+        <div class="doc-panel" id="docPanel-${f.id}"></div>
       </div>
       <div class="item-side">
         <span class="status-badge st-${st}">${st==='belum'?'Belum Mulai':st==='proses'?'Proses':'Selesai'}</span>
@@ -855,6 +959,8 @@ function renderItemCard(f){
   }, 500);
   textarea.addEventListener('input', saveNote);
 
+  if(window.wireDocActions) window.wireDocActions(card, f);
+
   return card;
 }
 
@@ -893,6 +999,248 @@ function renderAll(){
 
 // Jalankan sinkronisasi real-time Firebase saat halaman dimuat
 initFirebaseSync();
+</script>
+
+<script>
+// ============================================================
+// INTEGRASI GOOGLE DRIVE — upload dokumen & cek dokumen per kegiatan
+// ============================================================
+(function(){
+  const CFG = window.DRIVE_CONFIG || {};
+  const FOLDER_IDS = CFG.DRIVE_FOLDER_IDS || {};
+  const CONFIGURED = !!CFG.GOOGLE_CLIENT_ID;
+
+  let tokenClient = null;
+  let accessToken = null;
+  let tokenExpiresAt = 0;
+  const docCache = {}; // itemId -> array of files (session cache)
+
+  function showConfigBanner(){
+    const missingFolders = bidangKeys().filter(bk => !FOLDER_IDS[bk]);
+    const banner = document.getElementById('configBanner');
+    if(!CONFIGURED || missingFolders.length){
+      banner.style.display = 'block';
+      banner.innerHTML = `⚠ Fitur Google Drive belum dikonfigurasi sepenuhnya. `
+        + (!CONFIGURED ? `Isi <code>GOOGLE_CLIENT_ID</code> ` : '')
+        + (missingFolders.length ? `${!CONFIGURED?'dan ':''}isi <code>DRIVE_FOLDER_IDS</code> untuk bidang: ${missingFolders.join(', ')} ` : '')
+        + `pada bagian konfigurasi di source file HTML ini (lihat komentar di &lt;head&gt;).`;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  function initTokenClient(){
+    if(!CONFIGURED || !window.google || !google.accounts) return;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CFG.GOOGLE_CLIENT_ID,
+      scope: CFG.SCOPE || 'https://www.googleapis.com/auth/drive',
+      callback: (resp) => {
+        if(resp && resp.access_token){
+          accessToken = resp.access_token;
+          tokenExpiresAt = Date.now() + ((resp.expires_in || 3500) * 1000);
+          setDriveStatus(true);
+        }
+      },
+      error_callback: (err) => {
+        console.error('Google OAuth error:', err);
+        alert('Gagal terhubung ke Google Drive. Coba lagi, atau periksa konfigurasi OAuth Client ID / origin.');
+      }
+    });
+  }
+
+  function setDriveStatus(connected){
+    const btn = document.getElementById('driveStatusBtn');
+    const txt = document.getElementById('driveStatusText');
+    btn.classList.toggle('connected', connected);
+    txt.textContent = connected ? 'Google Drive Terhubung' : 'Hubungkan Google Drive';
+  }
+
+  function ensureToken(interactive){
+    return new Promise((resolve, reject) => {
+      if(!CONFIGURED){ reject(new Error('not-configured')); return; }
+      if(accessToken && Date.now() < tokenExpiresAt - 30000){ resolve(accessToken); return; }
+      if(!tokenClient) initTokenClient();
+      if(!tokenClient){ reject(new Error('gis-not-ready')); return; }
+      const prevCallback = tokenClient.callback;
+      tokenClient.callback = (resp) => {
+        if(resp && resp.access_token){
+          accessToken = resp.access_token;
+          tokenExpiresAt = Date.now() + ((resp.expires_in || 3500) * 1000);
+          setDriveStatus(true);
+          resolve(accessToken);
+        } else {
+          reject(new Error('no-token'));
+        }
+      };
+      tokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    });
+  }
+
+  document.getElementById('driveStatusBtn').addEventListener('click', async () => {
+    try{
+      if(!CONFIGURED){
+        showConfigBanner();
+        document.getElementById('configBanner').scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+      }
+      await ensureToken(true);
+    }catch(e){
+      console.error(e);
+    }
+  });
+
+  function slugTag(f){
+    return `${f.bidangKey}_${f.progCode}_${f.no}`;
+  }
+
+  async function driveFetch(url, options){
+    const token = await ensureToken(false).catch(() => ensureToken(true));
+    options = options || {};
+    options.headers = Object.assign({}, options.headers, { Authorization: `Bearer ${token}` });
+    const res = await fetch(url, options);
+    if(res.status === 401){
+      accessToken = null;
+      const token2 = await ensureToken(true);
+      options.headers.Authorization = `Bearer ${token2}`;
+      return fetch(url, options);
+    }
+    return res;
+  }
+
+  async function uploadFileToDrive(f, file){
+    const folderId = FOLDER_IDS[f.bidangKey];
+    if(!folderId){ alert(`Folder Google Drive untuk bidang "${f.bidangKey}" belum diatur (lihat konfigurasi di source file).`); return null; }
+    const tag = slugTag(f);
+    const metadata = { name: `[${tag}] ${file.name}`, parents: [folderId] };
+    const boundary = '-------rkt_upload_' + Date.now();
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelim = `\r\n--${boundary}--`;
+
+    const fileBuf = await file.arrayBuffer();
+    const metaPart = delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata);
+    const filePartHeader = delimiter + `Content-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`;
+
+    const encoder = new TextEncoder();
+    const metaBytes = encoder.encode(metaPart);
+    const fileHeaderBytes = encoder.encode(filePartHeader);
+    const closeBytes = encoder.encode(closeDelim);
+
+    const body = new Blob([metaBytes, fileHeaderBytes, fileBuf, closeBytes]);
+
+    const res = await driveFetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,createdTime',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body
+      }
+    );
+    if(!res.ok){
+      const errText = await res.text().catch(()=> '');
+      console.error('Upload gagal:', errText);
+      alert('Gagal mengunggah dokumen ke Google Drive. Periksa koneksi / izin akses.');
+      return null;
+    }
+    return res.json();
+  }
+
+  async function listFilesForItem(f, force){
+    if(!force && docCache[f.id]) return docCache[f.id];
+    const folderId = FOLDER_IDS[f.bidangKey];
+    if(!folderId) return [];
+    const tag = slugTag(f);
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and name contains '[${tag}]'`);
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,webViewLink,createdTime)&orderBy=createdTime desc`);
+    if(!res.ok){
+      const errText = await res.text().catch(()=> '');
+      console.error('Gagal mengambil daftar dokumen:', errText);
+      return [];
+    }
+    const data = await res.json();
+    const files = data.files || [];
+    docCache[f.id] = files;
+    return files;
+  }
+
+  function renderDocPanel(panel, files, countEl){
+    if(!files.length){
+      panel.innerHTML = '<div class="doc-empty">Belum ada dokumen yang diunggah untuk kegiatan ini.</div>';
+      countEl.style.display = 'none';
+    } else {
+      panel.innerHTML = files.map(file => `
+        <div class="doc-file-row">
+          <a href="${file.webViewLink}" target="_blank" rel="noopener">${escapeHtml(file.name.replace(/^\[[^\]]+\]\s*/, ''))}</a>
+          <span class="doc-date">${file.createdTime ? new Date(file.createdTime).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>
+        </div>
+      `).join('');
+      countEl.textContent = `${files.length} dokumen`;
+      countEl.style.display = 'inline-block';
+      countEl.classList.add('has-docs');
+    }
+  }
+
+  window.wireDocActions = function(card, f){
+    const actionsWrap = card.querySelector(`#docActions-${CSS.escape(f.id)}`);
+    if(!actionsWrap) return;
+    const uploadBtn = actionsWrap.querySelector('.doc-btn.upload');
+    const checkBtn = actionsWrap.querySelector('.doc-btn.check');
+    const countEl = actionsWrap.querySelector('.doc-count');
+    const fileInput = actionsWrap.querySelector('.doc-file-input');
+    const panel = card.querySelector(`#docPanel-${CSS.escape(f.id)}`);
+
+    if(!FOLDER_IDS[f.bidangKey]){
+      uploadBtn.disabled = true;
+      checkBtn.disabled = true;
+      uploadBtn.title = checkBtn.title = 'Folder Google Drive bidang ini belum diatur';
+    }
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';
+      if(!file) return;
+      const original = uploadBtn.innerHTML;
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '⏳ Mengunggah…';
+      try{
+        const result = await uploadFileToDrive(f, file);
+        if(result){
+          delete docCache[f.id];
+          const files = await listFilesForItem(f, true);
+          renderDocPanel(panel, files, countEl);
+          panel.classList.add('open');
+        }
+      }catch(e){
+        console.error(e);
+        alert('Gagal mengunggah dokumen. Pastikan Anda sudah terhubung ke Google Drive.');
+      }finally{
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = original;
+      }
+    });
+
+    checkBtn.addEventListener('click', async () => {
+      const willOpen = !panel.classList.contains('open');
+      if(!willOpen){ panel.classList.remove('open'); return; }
+      panel.classList.add('open');
+      panel.innerHTML = '<div class="doc-loading">Memuat daftar dokumen…</div>';
+      try{
+        const files = await listFilesForItem(f, false);
+        renderDocPanel(panel, files, countEl);
+      }catch(e){
+        console.error(e);
+        panel.innerHTML = '<div class="doc-empty">Gagal memuat dokumen. Pastikan Anda sudah terhubung ke Google Drive.</div>';
+      }
+    });
+  };
+
+  showConfigBanner();
+  window.addEventListener('load', () => {
+    // beri waktu skrip GIS (async) untuk siap
+    setTimeout(initTokenClient, 300);
+  });
+})();
 </script>
 </body>
 </html>
